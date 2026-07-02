@@ -978,12 +978,13 @@ window.applyState = function (data) {
   rebuildUsers();
   const st = document.getElementById('login-err'); // 로딩중 안내 해제
   if (st && st.dataset.loading) { st.textContent = ''; delete st.dataset.loading; }
+  try { tryRestoreSession(); } catch (e) {}
   if (currentUser && (currentUser.role === 'admin' || currentUser.role === 'teacher')) {
     try { refreshAdmin(); } catch (e) {}
   }
 };
 // Firebase가 4초 내 응답 없으면 로컬 캐시로라도 진행
-setTimeout(() => { if (!fbReady) { fbReady = true; rebuildUsers(); } }, 4000);
+setTimeout(() => { if (!fbReady) { fbReady = true; rebuildUsers(); try { tryRestoreSession(); } catch (e) {} } }, 4000);
 
 // ── BUILD USERS (STORE 기준으로 재구성) ──
 const USERS = {};
@@ -1069,6 +1070,13 @@ function doLogin() {
   if (!USERS[id]) { err.textContent = '존재하지 않는 아이디입니다.'; return; }
   if (pw !== getPw(id)) { err.textContent = '비밀번호가 올바르지 않습니다.'; return; }
   err.textContent = '';
+  try { sessionStorage.setItem('session_uid', id); } catch (e) {}
+  enterSession(id);
+}
+
+// 로그인 후 화면 전환 (로그인/세션복원 공용)
+function enterSession(id) {
+  if (!USERS[id]) return;
   currentUser = { id, ...USERS[id] };
   applySkinClass(getUserSkin(id));
   updateCoinDisplay();
@@ -1081,6 +1089,14 @@ function doLogin() {
     document.getElementById('student-page').classList.add('active');
     loadStudentData();
   }
+}
+
+// 새로고침 시 세션 복원 (데이터 준비 후 1회)
+function tryRestoreSession() {
+  if (currentUser) return;
+  let uid = null;
+  try { uid = sessionStorage.getItem('session_uid'); } catch (e) {}
+  if (uid && USERS[uid]) enterSession(uid);
 }
 
 function setupAdminForUser() {
@@ -1109,6 +1125,7 @@ function applyRolePerms() {
 
 function doLogout() {
   currentUser = null;
+  try { sessionStorage.removeItem('session_uid'); } catch (e) {}
   adminRows = {};
   applySkinClass('light');
   closePwModal();
