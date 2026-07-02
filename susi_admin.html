@@ -299,6 +299,19 @@
   .t-check { display: flex; align-items: center; gap: 5px; font-size: 13px; color: var(--text); cursor: pointer; white-space: nowrap; }
   .t-check input { width: 16px; height: 16px; cursor: pointer; }
 
+  /* ── 바로가기 모음 ── */
+  .shortcut-row { display: flex; justify-content: flex-start; gap: 12px; flex-wrap: wrap; }
+  .shortcut-box {
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px;
+    width: 124px; padding: 4px 10px 8px;
+    border: 1px solid var(--border); border-radius: 12px; background: #fff;
+    cursor: pointer; text-decoration: none; color: #212529 !important;
+    font-size: 13px; font-weight: 600; text-align: center;
+    transition: box-shadow .15s, transform .15s;
+  }
+  .shortcut-box:hover { box-shadow: 0 4px 14px rgba(0,0,0,.12); transform: translateY(-2px); }
+  .shortcut-box img { width: 88px; height: 88px; object-fit: contain; }
+
   /* ── 랭킹 ── */
   .rank-cols { display: flex; gap: 14px; margin-bottom: 8px; }
   .rank-col { flex: 1; min-width: 0; }
@@ -659,6 +672,15 @@
         <span class="save-msg" id="save-msg">✓ 저장되었습니다</span>
       </div>
     </div>
+    <div class="card" style="margin-top:14px;">
+      <div class="card-title">🔗 바로가기</div>
+      <div class="shortcut-row">
+        <a class="shortcut-box" href="https://www.adiga.kr/" target="_blank" rel="noopener">
+          <img src="adiga_logo.png" alt="대입정보포털 로고">
+          <span>대입정보포털</span>
+        </a>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -708,6 +730,7 @@
       <div class="sidebar-divider"></div>
       <button class="sidebar-btn nav-btn" id="nav-teacher" onclick="selectView('teacher')">👩‍🏫 교사 설정</button>
       <button class="sidebar-btn nav-btn" id="nav-gold" onclick="selectView('gold')">🪙 골드 및 스킨</button>
+      <button class="sidebar-btn nav-btn" id="nav-rank" onclick="selectView('rank')">🏆 랭킹 관리</button>
       <button class="sidebar-btn nav-btn" id="nav-pwreset" onclick="selectView('pwreset')">🔑 비밀번호 관리</button>
     </div>
 
@@ -795,6 +818,17 @@
           <div style="font-size:12px;color:var(--gray);margin-top:4px;">학생의 골드량을 직접 입력해 조정합니다.</div>
         </div>
         <div id="gold-list"></div>
+      </div>
+
+      <!-- VIEW: 랭킹 관리 -->
+      <div id="view-rank" style="display:none">
+        <div class="card" style="padding:16px 20px;margin-bottom:14px;">
+          <div class="filter-row">
+            <input class="search-input" id="rank-search" placeholder="🔍 이름 또는 학번 검색..." oninput="renderRankAdmin()">
+          </div>
+          <div style="font-size:12px;color:var(--gray);margin-top:4px;">피카피카썬더! 랭킹의 사용자별 최고 기록(초)을 직접 수정하거나, 기록을 삭제해 랭킹에서 제외합니다.</div>
+        </div>
+        <div id="rank-admin-list"></div>
       </div>
 
       <!-- VIEW: 비밀번호 초기화 -->
@@ -897,15 +931,15 @@
 <!-- ── RANK MODAL (랭킹) ── -->
 <div class="pw-modal-bg" id="rank-modal-bg">
   <div class="pw-modal" style="max-width:460px;">
-    <h3>🏆 피카피카썬더 랭킹</h3>
+    <h3>🏆 피카피카썬더! 랭킹</h3>
     <div class="rank-cols">
-      <div class="rank-col">
-        <div class="rank-title">역대 랭킹 TOP 10</div>
-        <div id="rank-all"></div>
-      </div>
       <div class="rank-col">
         <div class="rank-title">주간 랭킹 TOP 10</div>
         <div id="rank-week"></div>
+      </div>
+      <div class="rank-col">
+        <div class="rank-title">역대 랭킹 TOP 10</div>
+        <div id="rank-all"></div>
       </div>
     </div>
     <div class="pw-modal-footer">
@@ -1100,6 +1134,7 @@ function doLogin() {
 function enterSession(id) {
   if (!USERS[id]) return;
   currentUser = { id, ...USERS[id] };
+  entryLayout = STORE['layout_' + id] || 'card';   // 사용자별 입력칸 보기 설정 복원
   applySkinClass(getUserSkin(id));
   updateCoinDisplay();
   document.getElementById('login-page').style.display = 'none';
@@ -1137,6 +1172,7 @@ function applyRolePerms() {
   const isAdmin = u && u.role === 'admin';
   const isTeacher = u && u.role === 'teacher';
   document.getElementById('nav-teacher').style.display = isAdmin ? 'block' : 'none';
+  document.getElementById('nav-rank').style.display = isAdmin ? 'block' : 'none';
   document.getElementById('nav-gold').style.display = (isAdmin || (isTeacher && u.goldPerm)) ? 'block' : 'none';
   document.getElementById('nav-pwreset').style.display = (isAdmin || (isTeacher && u.pwPerm)) ? 'block' : 'none';
 }
@@ -1184,8 +1220,8 @@ function renderEntry(i, rowObj, ctx, uid) {
   </div>`;
 }
 
-// 입력칸 보기: card(한쪽보기, 2줄) / row(한줄보기, 가로 스크롤 표)
-let entryLayout = localStorage.getItem('entryLayout') || 'card';
+// 입력칸 보기: card(줄바꿈) / row(한줄보기) — 사용자 계정에 저장(공유 STORE)
+let entryLayout = 'card';
 
 function buildEntriesHtml(arr, ctx, uid) {
   if (entryLayout === 'row') {
@@ -1208,7 +1244,7 @@ function markLayoutBtns() {
 
 function setEntryLayout(mode) {
   entryLayout = mode;
-  localStorage.setItem('entryLayout', mode);
+  if (currentUser) { STORE['layout_' + currentUser.id] = mode; saveState(); }
   markLayoutBtns();
   if (currentUser && currentUser.role === 'student') renderRows();
   else if (currentView === 'status') renderAdmin();
@@ -1275,6 +1311,7 @@ function selectView(v) {
   document.getElementById('view-collect').style.display = v === 'collect' ? 'block' : 'none';
   document.getElementById('view-teacher').style.display = v === 'teacher' ? 'block' : 'none';
   document.getElementById('view-gold').style.display    = v === 'gold'    ? 'block' : 'none';
+  document.getElementById('view-rank').style.display    = v === 'rank'    ? 'block' : 'none';
   document.getElementById('view-pwreset').style.display = v === 'pwreset' ? 'block' : 'none';
   document.getElementById('class-submenu').classList.toggle('open', v === 'status');
   document.getElementById('collect-submenu').classList.toggle('open', v === 'collect');
@@ -1314,6 +1351,7 @@ function refreshAdmin() {
   else if (currentView === 'collect') renderCollect();
   else if (currentView === 'teacher') renderTeachers();
   else if (currentView === 'gold') renderGold();
+  else if (currentView === 'rank') renderRankAdmin();
   else renderPwReset();
 }
 
@@ -1500,7 +1538,7 @@ function editGraduate(uid) {
   setGraduates(grads);
   USERS[nw] = USERS[uid];
   delete USERS[uid];
-  ['apps_', 'pw_', 'coin_', 'owned_', 'skin_'].forEach(pre => {
+  ['apps_', 'pw_', 'coin_', 'owned_', 'skin_', 'sound_', 'layout_'].forEach(pre => {
     if (STORE[pre + uid] !== undefined) { STORE[pre + nw] = STORE[pre + uid]; delete STORE[pre + uid]; }
   });
   saveState();
@@ -1523,8 +1561,9 @@ function buildEditor(uid) {
   const er = getEditRows(uid);
   return `<div>${buildEntriesHtml(er, 'a', uid)}</div>
   <div style="display:flex;gap:10px;align-items:center;margin-top:10px;flex-wrap:wrap;">
-    <button class="btn-add" style="width:auto;margin:0;padding:8px 16px;" onclick="adminAddRow('${uid}')">+ 행 추가</button>
-    <button class="btn-save" style="padding:9px 22px;" onclick="adminSave('${uid}')">저장</button>
+    <button class="btn-add" style="width:auto;margin:0;padding:8px 16px;" onclick="adminAddRow('${uid}')">+ 학교 추가</button>
+    <button class="btn-save" style="padding:9px 22px;" onclick="adminSave('${uid}')">저장하기</button>
+    <span style="font-size:12px;color:var(--gray);">저장하기 버튼을 눌러야만 입력한 내용이 저장됩니다.</span>
     <span class="save-msg" id="adminsave-${uid}">✓ 저장되었습니다 (학생 화면에도 반영됨)</span>
   </div>`;
 }
@@ -1793,7 +1832,7 @@ function renderPwReset() {
       <td>${user.name} ${badge}</td>
       <td style="color:#adb5bd;font-size:13px">${uid}</td>
       <td>${isPwDef
-        ? '<span style="color:var(--gray)">초기값 (학번)</span>'
+        ? `<span style="color:var(--gray)">초기값 (${user.role === 'teacher' ? '1234' : '학번'})</span>`
         : '<span style="color:var(--primary);font-weight:600">변경됨</span>'}</td>
       <td style="text-align:right"><button class="btn-pw-reset" ${isPwDef ? 'disabled' : ''} onclick="confirmReset('${uid}','${user.name}')">초기화</button></td>
     </tr>`;
@@ -1811,12 +1850,15 @@ function renderPwReset() {
 }
 
 function confirmReset(uid, name) {
+  const isT = USERS[uid] && USERS[uid].role === 'teacher';
+  const who = isT ? '교사' : '학생';
+  const initPw = isT ? '1234' : `학번(${uid})`;
   document.getElementById('modal-title').textContent = '비밀번호 초기화';
-  document.getElementById('modal-msg').textContent   = `${name} (${uid}) 학생의 비밀번호를 학번(${uid})으로 초기화할까요?`;
+  document.getElementById('modal-msg').textContent   = `${name} (${uid}) ${who}의 비밀번호를 ${initPw}(으)로 초기화할까요?`;
   document.getElementById('modal-bg').style.display  = 'flex';
   document.getElementById('modal-confirm').onclick = () => {
     resetPw(uid); closeModal(); refreshAdmin();
-    alert(`✓ ${name} 학생의 비밀번호가 학번(${uid})으로 초기화되었습니다.`);
+    alert(`✓ ${name} ${who}의 비밀번호가 ${initPw}(으)로 초기화되었습니다.`);
   };
 }
 
@@ -2007,7 +2049,11 @@ function markSkinOption() {
 function openGameModal() {
   const frame = document.getElementById('game-frame');
   // reset the iframe each time the modal opens so the game always starts fresh
-  frame.onload = () => { try { frame.contentWindow.focus(); } catch (e) {} };
+  frame.onload = () => {
+    try { frame.contentWindow.focus(); } catch (e) {}
+    // 사용자 계정에 저장된 사운드 설정 전달
+    try { frame.contentWindow.postMessage({ type: 'monsterball-sound', on: !!(currentUser && STORE['sound_' + currentUser.id]) }, '*'); } catch (e) {}
+  };
   frame.src = 'game.html';
   document.getElementById('game-modal-bg').classList.add('open');
 }
@@ -2019,6 +2065,10 @@ function closeGameModal() {
 window.addEventListener('message', (e) => {
   const data = e.data;
   if (!data || typeof data !== 'object') return;
+  if (data.type === 'monsterball-sound-change') {
+    if (currentUser) { STORE['sound_' + currentUser.id] = !!data.on; saveState(); }
+    return;
+  }
   if (data.type === 'monsterball-gameover') {
     const elapsed = data.elapsed || 0;
     const gold = Math.floor(elapsed);
@@ -2053,6 +2103,57 @@ function rankListHtml(list) {
     return `<li><span class="rank-name">${esc(x.name)}${idTag}</span><span class="rank-score">${x.score.toFixed(1)}초</span></li>`;
   }).join('') + '</ol>';
 }
+// ── ADMIN: 랭킹 관리 (기록 수정/삭제) ──
+function renderRankAdmin() {
+  const search = (document.getElementById('rank-search').value || '').trim().toLowerCase();
+  const list = document.getElementById('rank-admin-list');
+  const best = bestPerUser(getScores().filter(x => x.uid !== 'admin'));
+  let rowsHtml = '';
+  best.forEach((x, i) => {
+    const u = USERS[x.uid];
+    const name = u ? u.name : x.name;
+    if (search && !name.toLowerCase().includes(search) && !x.uid.includes(search)) return;
+    rowsHtml += `<tr>
+      <td style="color:#868e96;font-size:12px;white-space:nowrap">${i + 1}위</td>
+      <td style="white-space:nowrap">${esc(name)} ${u ? `<span class="class-badge">${badgeLabel(u)}</span>` : ''}</td>
+      <td style="color:#adb5bd;font-size:13px;white-space:nowrap">${esc(x.uid)}</td>
+      <td style="text-align:right;white-space:nowrap"><input type="number" min="0" step="0.1" class="gold-input" style="width:90px" value="${x.score}" data-uid="${esc(x.uid)}" onchange="setRankScore(this)"> 초</td>
+      <td style="text-align:right;white-space:nowrap"><button class="btn-pw-reset" onclick="deleteRankUser('${esc(x.uid)}')">기록 삭제</button></td>
+    </tr>`;
+  });
+  if (rowsHtml === '') { list.innerHTML = '<div class="no-data" style="padding:24px;background:#fff;border-radius:10px">랭킹 기록이 없습니다.</div>'; return; }
+  list.innerHTML = `<div class="card" style="padding:8px 12px;"><div class="table-wrap"><table class="pwreset-table" style="width:100%;">
+    <thead><tr>
+      <th>순위</th>
+      <th style="white-space:nowrap">이름</th>
+      <th style="white-space:nowrap">학번</th>
+      <th style="text-align:right;white-space:nowrap">최고 기록</th>
+      <th></th>
+    </tr></thead>
+    <tbody>${rowsHtml}</tbody></table></div></div>`;
+}
+function setRankScore(el) {
+  const uid = el.dataset.uid;
+  const v = Math.max(0, Math.round((parseFloat(el.value) || 0) * 10) / 10);
+  const s = getScores();
+  let bestRec = null;
+  s.forEach(x => { if (x.uid === uid && (!bestRec || x.score > bestRec.score)) bestRec = x; });
+  if (bestRec) {
+    // 수정한 값이 확실한 최고 기록이 되도록, 해당 사용자의 다른 기록도 새 값 이하로 맞춤
+    s.forEach(x => { if (x.uid === uid && x.score > v) x.score = v; });
+    bestRec.score = v;
+    setScores(s);
+  }
+  renderRankAdmin();
+}
+function deleteRankUser(uid) {
+  const u = USERS[uid];
+  const nm = u ? u.name : uid;
+  if (!confirm(`${nm} 님의 게임 기록을 모두 삭제할까요?\n랭킹에서 제외되며 되돌릴 수 없습니다.`)) return;
+  setScores(getScores().filter(x => x.uid !== uid));
+  renderRankAdmin();
+}
+
 function openRankModal() {
   const scores = getScores().filter(x => x.uid !== 'admin');   // 관리자 제외
   const weekAgo = Date.now() - 7 * 24 * 3600 * 1000;
@@ -2061,6 +2162,27 @@ function openRankModal() {
   document.getElementById('rank-modal-bg').classList.add('open');
 }
 function closeRankModal() { document.getElementById('rank-modal-bg').classList.remove('open'); }
+
+// ── 팝업 공통 닫기: ESC 또는 팝업 바깥 클릭 ──
+function closeAnyModal(bg) {
+  if (bg.id === 'modal-bg') { closeModal(); return; }
+  if (bg.id === 'game-modal-bg') { closeGameModal(); return; }
+  bg.classList.remove('open');
+}
+document.querySelectorAll('.pw-modal-bg').forEach(bg => {
+  bg.addEventListener('mousedown', e => { if (e.target === bg) closeAnyModal(bg); });
+});
+(() => {
+  const m = document.getElementById('modal-bg');
+  if (m) m.addEventListener('mousedown', e => { if (e.target === m) closeAnyModal(m); });
+})();
+document.addEventListener('keydown', e => {
+  if (e.key !== 'Escape') return;
+  const open = [...document.querySelectorAll('.pw-modal-bg.open')];
+  const confirmBg = document.getElementById('modal-bg');
+  if (confirmBg && confirmBg.style.display === 'flex') open.push(confirmBg);
+  if (open.length) closeAnyModal(open[open.length - 1]);   // 가장 위(나중에 열린) 팝업만 닫기
+});
 
 // 우클릭(컨텍스트 메뉴) 전체 비활성화
 document.addEventListener('contextmenu', function (e) { e.preventDefault(); });

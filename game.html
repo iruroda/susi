@@ -171,12 +171,32 @@
   .hidden { display: none !important; }
   .hint { font-size: 12px; opacity: 0.6; }
   img.preload { display: none; }
+
+  /* sound on/off toggle (top-right) */
+  #soundBtn {
+    position: absolute;
+    top: 10px; right: 10px;
+    z-index: 30;
+    padding: 6px 13px;
+    border: none;
+    border-radius: 999px;
+    background: rgba(8,8,20,0.55);
+    color: #fff;
+    font-size: 13px;
+    font-weight: 700;
+    font-family: inherit;
+    cursor: pointer;
+    backdrop-filter: blur(2px);
+  }
+  #soundBtn.on { background: linear-gradient(90deg, #ffd27a, #ff9b6a); color: #1a1a1a; }
 </style>
 </head>
 <body>
 <div id="wrap">
   <div id="stage">
     <canvas id="game"></canvas>
+
+    <button id="soundBtn">🔇 Off</button>
 
     <div class="hud hidden" id="hud">
       <div class="time" id="timeText">0.0</div>
@@ -226,6 +246,9 @@
 <img class="preload" id="imgBgSrc" src="background1.png">
 <img class="preload" id="imgGotchaSrc" src="gotcha.png">
 
+<!-- BGM: Dream Island (Eevee Doll) - Pokémon Pokopia [OST] — 같은 폴더에 bgm.mp3로 넣으면 재생됨 -->
+<audio id="bgm" src="bgm.mp3" loop preload="none"></audio>
+
 <script>
 (function () {
   // 우클릭/롱프레스(그림 저장) 컨텍스트 메뉴 비활성화
@@ -249,6 +272,131 @@
   const specialBtn = document.getElementById('specialBtn');
   const cdRing = document.getElementById('cdRing');
   const specialMain = document.getElementById('specialMain');
+
+  // ---------- sound: BGM + 합성 효과음 (기본 Off) ----------
+  const soundBtn = document.getElementById('soundBtn');
+  const bgm = document.getElementById('bgm');
+  bgm.volume = 0.45;
+  let soundOn = false;
+  let actx = null;
+  function ensureCtx() {
+    if (!actx) actx = new (window.AudioContext || window.webkitAudioContext)();
+    if (actx.state === 'suspended') actx.resume();
+    return actx;
+  }
+  function playBgm() { if (soundOn) { ensureCtx(); try { bgm.currentTime = 0; } catch (e) {} bgm.play().catch(() => {}); } }
+  function stopBgm() { bgm.pause(); }
+  function updateSoundBtn() {
+    soundBtn.textContent = soundOn ? '🔊 On' : '🔇 Off';
+    soundBtn.classList.toggle('on', soundOn);
+  }
+  // 사운드 설정 저장: 부모(수시지원 페이지)가 있으면 사용자 계정에, 단독 실행이면 localStorage에
+  function persistSound() {
+    try { localStorage.setItem('mb_sound', soundOn ? '1' : '0'); } catch (e) {}
+    if (window.parent && window.parent !== window) {
+      window.parent.postMessage({ type: 'monsterball-sound-change', on: soundOn }, '*');
+    }
+  }
+  soundBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    soundOn = !soundOn;
+    updateSoundBtn();
+    persistSound();
+    if (soundOn) { ensureCtx(); if (running) playBgm(); }
+    else stopBgm();
+  });
+  // 저장된 설정 복원 (단독 실행용) — 임베드 시 부모가 보내는 설정이 곧바로 덮어씀
+  try { soundOn = localStorage.getItem('mb_sound') === '1'; } catch (e) {}
+  updateSoundBtn();
+  window.addEventListener('message', (e) => {
+    const d = e.data;
+    if (d && typeof d === 'object' && d.type === 'monsterball-sound') {
+      soundOn = !!d.on;
+      updateSoundBtn();
+      if (!soundOn) stopBgm();
+      else if (running) playBgm();
+    }
+  });
+
+  // 열매 획득: 쥬시한 '뽀록' (~0.5초)
+  function sfxFruit() {
+    if (!soundOn) return;
+    const ac = ensureCtx(), t = ac.currentTime;
+    const o = ac.createOscillator(), g = ac.createGain();
+    o.type = 'sine';
+    o.frequency.setValueAtTime(280, t);
+    o.frequency.exponentialRampToValueAtTime(720, t + 0.09);
+    o.frequency.exponentialRampToValueAtTime(430, t + 0.22);
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(0.5, t + 0.02);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + 0.5);
+    o.connect(g).connect(ac.destination);
+    o.start(t); o.stop(t + 0.5);
+    const nb = ac.createBuffer(1, Math.floor(ac.sampleRate * 0.12), ac.sampleRate);
+    const d = nb.getChannelData(0);
+    for (let i = 0; i < d.length; i++) d[i] = (Math.random() * 2 - 1) * (1 - i / d.length);
+    const ns = ac.createBufferSource(); ns.buffer = nb;
+    const nf = ac.createBiquadFilter(); nf.type = 'bandpass'; nf.frequency.value = 1400; nf.Q.value = 1.2;
+    const ng = ac.createGain();
+    ng.gain.setValueAtTime(0.25, t);
+    ng.gain.exponentialRampToValueAtTime(0.0001, t + 0.12);
+    ns.connect(nf).connect(ng).connect(ac.destination);
+    ns.start(t); ns.stop(t + 0.12);
+  }
+
+  // 필살기: 지지직 전기 (1초)
+  function sfxSpecial() {
+    if (!soundOn) return;
+    const ac = ensureCtx(), t = ac.currentTime, dur = 1.0;
+    const nb = ac.createBuffer(1, Math.floor(ac.sampleRate * dur), ac.sampleRate);
+    const d = nb.getChannelData(0);
+    for (let i = 0; i < d.length; i++) {
+      const k = i / d.length;
+      d[i] = (Math.random() * 2 - 1) * (Math.random() < 0.25 ? 1 : 0.25) * (1 - k);
+    }
+    const ns = ac.createBufferSource(); ns.buffer = nb;
+    const hp = ac.createBiquadFilter(); hp.type = 'highpass'; hp.frequency.value = 1800;
+    const ng = ac.createGain();
+    ng.gain.setValueAtTime(0.4, t);
+    ng.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    ns.connect(hp).connect(ng).connect(ac.destination);
+    ns.start(t); ns.stop(t + dur);
+    const o = ac.createOscillator(); o.type = 'sawtooth';
+    o.frequency.setValueAtTime(90, t);
+    const lfo = ac.createOscillator(); lfo.type = 'square'; lfo.frequency.value = 38;
+    const lg = ac.createGain(); lg.gain.value = 55;
+    lfo.connect(lg).connect(o.frequency);
+    const og = ac.createGain();
+    og.gain.setValueAtTime(0.28, t);
+    og.gain.exponentialRampToValueAtTime(0.0001, t + dur * 0.9);
+    o.connect(og).connect(ac.destination);
+    o.start(t); o.stop(t + dur); lfo.start(t); lfo.stop(t + dur);
+  }
+
+  // 게임오버: 양철 실로폰 '챙-' (~0.5초)
+  function sfxGameOver() {
+    if (!soundOn) return;
+    const ac = ensureCtx(), t = ac.currentTime;
+    const base = 523;
+    [1, 2.76, 5.4, 8.9].forEach((m, i) => {
+      const o = ac.createOscillator(), g = ac.createGain();
+      o.type = 'sine'; o.frequency.value = base * m;
+      g.gain.setValueAtTime(0.32 / (i + 1), t);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + 0.5);
+      o.connect(g).connect(ac.destination);
+      o.start(t); o.stop(t + 0.5);
+    });
+    const nb = ac.createBuffer(1, Math.floor(ac.sampleRate * 0.08), ac.sampleRate);
+    const d = nb.getChannelData(0);
+    for (let i = 0; i < d.length; i++) d[i] = (Math.random() * 2 - 1) * (1 - i / d.length);
+    const ns = ac.createBufferSource(); ns.buffer = nb;
+    const bf = ac.createBiquadFilter(); bf.type = 'bandpass'; bf.frequency.value = 5200; bf.Q.value = 2;
+    const ng = ac.createGain();
+    ng.gain.setValueAtTime(0.3, t);
+    ng.gain.exponentialRampToValueAtTime(0.0001, t + 0.08);
+    ns.connect(bf).connect(ng).connect(ac.destination);
+    ns.start(t); ns.stop(t + 0.08);
+  }
 
   // ---------- image loading ----------
   const imgNomove = document.getElementById('imgNomoveSrc');
@@ -407,6 +555,7 @@
 
   function activateSpecial() {
     if (!running || !specialReady) return;
+    sfxSpecial();
     for (const o of objects) burst(o.x, o.y, '255,255,255', 8);
     objects = [];
     specialReady = false;
@@ -532,6 +681,7 @@
     try { window.focus(); } catch (e) {}   // iframe 임베드 시 키보드 입력 포커스 확보
     reset();
     running = true;
+    playBgm();
     startScreen.classList.add('hidden');
     gameOverScreen.classList.add('hidden');
     hud.classList.remove('hidden');
@@ -543,6 +693,8 @@
 
   function gameOver() {
     running = false;
+    stopBgm();
+    sfxGameOver();
     gotchaAnim = { x: player.x, y: player.y, t: 0 };
     if (elapsed > best) best = elapsed;
     finalTime.textContent = elapsed.toFixed(1);
@@ -742,6 +894,7 @@
             gameOver();
             break;
           } else {
+            sfxFruit();
             burst(o.x, o.y, FRUIT_COLOR[o.kind] || '255,214,90', 14);
             objects.splice(i, 1);
             grapeCount = Math.min(GRAPE_TARGET, grapeCount + 1);
