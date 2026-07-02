@@ -961,26 +961,50 @@ const ALL_CLASSES = {
   10: ['강지우','김가인','김단아','김보현','김승연','김호연','박사랑','박세라','박하음','손여진','손예서','신예슬','신지효','양예빈','원지유','윤서현','이사랑','이서윤','이재윤','임서영','임서현','장유림','장주예','조승주','진서윤','최하은','한윤지','한채이']
 };
 
-// ── BUILD USERS ──
-const USERS = { admin: { role: 'admin', name: '관리자' } };
-for (const [cls, names] of Object.entries(ALL_CLASSES)) {
-  const c = parseInt(cls);
-  const prefix = c === 10 ? '310' : `30${c}`;
-  names.forEach((name, i) => {
-    const id = prefix + String(i + 1).padStart(2, '0');
-    USERS[id] = { role: 'student', name, cls: c };
-  });
+// ── 공유 저장소 (Firestore + localStorage 캐시) ──
+let STORE = {};
+try { STORE = JSON.parse(localStorage.getItem('susi_state') || '{}') || {}; } catch { STORE = {}; }
+let fbReady = false, saveTimer = null;
+function saveState() {
+  try { localStorage.setItem('susi_state', JSON.stringify(STORE)); } catch {}
+  if (window.fbSave) { clearTimeout(saveTimer); saveTimer = setTimeout(() => window.fbSave(STORE), 400); }
+}
+window.applyState = function (data) {
+  if (data && typeof data === 'object') {
+    STORE = data;
+    try { localStorage.setItem('susi_state', JSON.stringify(STORE)); } catch {}
+  }
+  fbReady = true;
+  rebuildUsers();
+  const st = document.getElementById('login-err'); // 로딩중 안내 해제
+  if (st && st.dataset.loading) { st.textContent = ''; delete st.dataset.loading; }
+  if (currentUser && (currentUser.role === 'admin' || currentUser.role === 'teacher')) {
+    try { refreshAdmin(); } catch (e) {}
+  }
+};
+// Firebase가 4초 내 응답 없으면 로컬 캐시로라도 진행
+setTimeout(() => { if (!fbReady) { fbReady = true; rebuildUsers(); } }, 4000);
+
+// ── BUILD USERS (STORE 기준으로 재구성) ──
+const USERS = {};
+function rebuildUsers() {
+  for (const k in USERS) delete USERS[k];
+  USERS.admin = { role: 'admin', name: '관리자' };
+  for (const [cls, names] of Object.entries(ALL_CLASSES)) {
+    const c = parseInt(cls);
+    const prefix = c === 10 ? '310' : `30${c}`;
+    names.forEach((name, i) => { USERS[prefix + String(i + 1).padStart(2, '0')] = { role: 'student', name, cls: c }; });
+  }
+  getGraduates().forEach(g => { USERS[g.id] = { role: 'student', name: g.name, cls: 80 }; });
+  getTeachers().forEach(t => { USERS[t.id] = { role: 'teacher', name: t.name, tcls: t.tcls, goldPerm: !!t.goldPerm, pwPerm: !!t.pwPerm }; });
 }
 
-// ── GRADUATES (80반, 학번 8001부터 순차) ──
-function getGraduates() { try { return JSON.parse(localStorage.getItem('graduates') || '[]'); } catch { return []; } }
-function setGraduates(a) { localStorage.setItem('graduates', JSON.stringify(a)); }
-getGraduates().forEach(g => { USERS[g.id] = { role: 'student', name: g.name, cls: 80 }; });
-
-// ── TEACHERS (교사 계정) ──
-function getTeachers() { try { const v = JSON.parse(localStorage.getItem('teachers')); if (Array.isArray(v)) return v; } catch {} return []; }
-function setTeachers(a) { localStorage.setItem('teachers', JSON.stringify(a)); }
-getTeachers().forEach(t => { USERS[t.id] = { role: 'teacher', name: t.name, tcls: t.tcls, goldPerm: !!t.goldPerm, pwPerm: !!t.pwPerm }; });
+// ── GRADUATES (80반) / TEACHERS ──
+function getGraduates() { return Array.isArray(STORE.graduates) ? STORE.graduates : []; }
+function setGraduates(a) { STORE.graduates = a; saveState(); }
+function getTeachers() { return Array.isArray(STORE.teachers) ? STORE.teachers : []; }
+function setTeachers(a) { STORE.teachers = a; saveState(); }
+rebuildUsers();
 
 function isAdminLike() { return currentUser && (currentUser.role === 'admin' || (currentUser.role === 'teacher' && currentUser.tcls === 'head')); }
 function canEditStudent(uid) {
@@ -1028,19 +1052,20 @@ let currentFilter = 'all';
 let selectedClass = 0;
 let rows = [];
 
-// ── STORAGE ──
-function getApps(uid)    { try { return JSON.parse(localStorage.getItem('apps_' + uid) || '[]'); } catch { return []; } }
-function setApps(uid, d) { localStorage.setItem('apps_' + uid, JSON.stringify(d)); }
-function getPw(uid)      { const s = localStorage.getItem('pw_' + uid); if (s !== null) return s; if (uid === 'admin') return 'admin1234'; if (USERS[uid] && USERS[uid].role === 'teacher') return '1234'; return uid; }
-function setPw(uid, pw)  { localStorage.setItem('pw_' + uid, pw); }
-function resetPw(uid)    { localStorage.removeItem('pw_' + uid); }
-function isDefaultPw(uid){ return !localStorage.getItem('pw_' + uid); }
+// ── STORAGE (공유 STORE 기반) ──
+function getApps(uid)    { const v = STORE['apps_' + uid]; return Array.isArray(v) ? v : []; }
+function setApps(uid, d) { STORE['apps_' + uid] = d; saveState(); }
+function getPw(uid)      { const s = STORE['pw_' + uid]; if (s != null) return s; if (uid === 'admin') return 'admin1234'; if (USERS[uid] && USERS[uid].role === 'teacher') return '1234'; return uid; }
+function setPw(uid, pw)  { STORE['pw_' + uid] = pw; saveState(); }
+function resetPw(uid)    { delete STORE['pw_' + uid]; saveState(); }
+function isDefaultPw(uid){ return STORE['pw_' + uid] == null; }
 
 // ── LOGIN ──
 function doLogin() {
   const id  = document.getElementById('login-id').value.trim();
   const pw  = document.getElementById('login-pw').value;
   const err = document.getElementById('login-err');
+  if (!fbReady) { err.textContent = '데이터를 불러오는 중입니다. 잠시 후 다시 시도하세요.'; err.dataset.loading = '1'; return; }
   if (!USERS[id]) { err.textContent = '존재하지 않는 아이디입니다.'; return; }
   if (pw !== getPw(id)) { err.textContent = '비밀번호가 올바르지 않습니다.'; return; }
   err.textContent = '';
@@ -1398,8 +1423,8 @@ function addGraduate() {
   const inp = document.getElementById('grad-name');
   const name = inp.value.trim();
   if (!name) { inp.focus(); return; }
-  const seq = (parseInt(localStorage.getItem('gradSeq')) || 0) + 1;
-  localStorage.setItem('gradSeq', seq);
+  const seq = (parseInt(STORE.gradSeq) || 0) + 1;
+  STORE.gradSeq = seq; saveState();
   const id = '380' + String(seq).padStart(2, '0');
   const grads = getGraduates();
   grads.push({ id, name });
@@ -1417,8 +1442,9 @@ function deleteGraduate(uid) {
   setGraduates(getGraduates().filter(g => g.id !== uid));
   delete USERS[uid];
   delete adminRows[uid];
-  localStorage.removeItem('apps_' + uid);
-  localStorage.removeItem('pw_' + uid);
+  delete STORE['apps_' + uid];
+  delete STORE['pw_' + uid];
+  saveState();
   renderAdmin();
 }
 
@@ -1435,9 +1461,9 @@ function editGraduate(uid) {
   USERS[nw] = USERS[uid];
   delete USERS[uid];
   ['apps_', 'pw_', 'coin_', 'owned_', 'skin_'].forEach(pre => {
-    const v = localStorage.getItem(pre + uid);
-    if (v !== null) { localStorage.setItem(pre + nw, v); localStorage.removeItem(pre + uid); }
+    if (STORE[pre + uid] !== undefined) { STORE[pre + nw] = STORE[pre + uid]; delete STORE[pre + uid]; }
   });
+  saveState();
   if (adminRows[uid]) { adminRows[nw] = adminRows[uid]; delete adminRows[uid]; }
   renderAdmin();
 }
@@ -1596,8 +1622,9 @@ function deleteTeacher(id) {
   if (!confirm(`${u.name} 선생님 (${id}) 계정을 삭제할까요?`)) return;
   setTeachers(getTeachers().filter(t => t.id !== id));
   delete USERS[id];
-  localStorage.removeItem('pw_' + id);
-  localStorage.removeItem('coin_' + id);
+  delete STORE['pw_' + id];
+  delete STORE['coin_' + id];
+  saveState();
   renderTeachers();
 }
 
@@ -1811,18 +1838,18 @@ const SKIN_META = {
 };
 
 function getCoin(uid) {
-  const v = localStorage.getItem('coin_' + uid);
-  if (v === null) { const def = uid === 'admin' ? 100 : 0; localStorage.setItem('coin_' + uid, def); return def; }
+  const v = STORE['coin_' + uid];
+  if (v == null) return uid === 'admin' ? 100 : 0;
   return parseInt(v) || 0;
 }
-function setCoin(uid, n) { localStorage.setItem('coin_' + uid, n); }
+function setCoin(uid, n) { STORE['coin_' + uid] = n; saveState(); }
 function getOwned(uid) {
-  try { const v = JSON.parse(localStorage.getItem('owned_' + uid)); if (Array.isArray(v)) return v; } catch {}
-  return ['light', 'dark'];
+  const v = STORE['owned_' + uid];
+  return Array.isArray(v) ? v : ['light', 'dark'];
 }
-function setOwned(uid, arr) { localStorage.setItem('owned_' + uid, JSON.stringify(arr)); }
-function getUserSkin(uid) { return localStorage.getItem('skin_' + uid) || 'light'; }
-function setUserSkin(uid, s) { localStorage.setItem('skin_' + uid, s); }
+function setOwned(uid, arr) { STORE['owned_' + uid] = arr; saveState(); }
+function getUserSkin(uid) { return STORE['skin_' + uid] || 'light'; }
+function setUserSkin(uid, s) { STORE['skin_' + uid] = s; saveState(); }
 
 function currentSkin() {
   const cl = document.body.classList;
@@ -1912,8 +1939,8 @@ window.addEventListener('message', (e) => {
 });
 
 // 랭킹 (역대 / 주간, 사용자별 최고기록)
-function getScores() { try { const v = JSON.parse(localStorage.getItem('mb_scores')); if (Array.isArray(v)) return v; } catch {} return []; }
-function setScores(a) { localStorage.setItem('mb_scores', JSON.stringify(a)); }
+function getScores() { const v = STORE['mb_scores']; return Array.isArray(v) ? v : []; }
+function setScores(a) { STORE['mb_scores'] = a; saveState(); }
 function recordScore(uid, name, score) {
   if (USERS[uid] && USERS[uid].role === 'admin') return;   // 관리자는 랭킹 제외
   const s = getScores();
@@ -1942,6 +1969,31 @@ function closeRankModal() { document.getElementById('rank-modal-bg').classList.r
 
 // 우클릭(컨텍스트 메뉴) 전체 비활성화
 document.addEventListener('contextmenu', function (e) { e.preventDefault(); });
+</script>
+
+<!-- ── Firebase (공유 데이터베이스) ── -->
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/12.15.0/firebase-app.js";
+  import { getFirestore, doc, onSnapshot, setDoc } from "https://www.gstatic.com/firebasejs/12.15.0/firebase-firestore.js";
+  const firebaseConfig = {
+    apiKey: "AIzaSyCqltNq1nOsTXLzlsXJmyXvAxA2pDDv-y4",
+    authDomain: "susi-d9f34.firebaseapp.com",
+    projectId: "susi-d9f34",
+    storageBucket: "susi-d9f34.firebasestorage.app",
+    messagingSenderId: "816043066531",
+    appId: "1:816043066531:web:985ac751f2841da9952b16"
+  };
+  const app = initializeApp(firebaseConfig);
+  const db = getFirestore(app);
+  const ref = doc(db, "state", "all");
+  window.fbSave = (data) => {
+    try { setDoc(ref, JSON.parse(JSON.stringify(data))).catch(e => console.warn('저장 실패', e)); }
+    catch (e) { console.warn('저장 예외', e); }
+  };
+  onSnapshot(ref,
+    (snap) => { if (window.applyState) window.applyState(snap.exists() ? snap.data() : {}); },
+    (err) => { console.warn('동기화 오류(로컬 캐시 사용)', err); if (window.applyState) window.applyState(null); }
+  );
 </script>
 </body>
 </html>
