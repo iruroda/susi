@@ -161,7 +161,7 @@
   .pw-msg { font-size: 13px; margin-top: 8px; min-height: 20px; }
   .pw-msg.ok  { color: var(--success); }
   .pw-msg.err { color: var(--danger); }
-  .pw-modal-footer { display: flex; gap: 10px; justify-content: flex-end; margin-top: 18px; }
+  .pw-modal-footer { display: flex; gap: 10px; justify-content: flex-end; margin-top: 18px; flex-wrap: wrap; }
   .pw-modal-footer button { padding: 9px 20px; border-radius: 8px; font-size: 14px; font-weight: 600; cursor: pointer; font-family: inherit; }
   .btn-modal-cancel { background: #fff; border: 1px solid var(--border); color: #555; }
   .btn-modal-cancel:hover { background: #f1f3f5; }
@@ -607,6 +607,8 @@
     .stats-row { grid-template-columns: 1fr 1fr; }
     .main { padding: 16px; }
     .login-card { padding: 32px 24px; }
+    .pw-modal-footer { gap: 6px; }
+    .pw-modal-footer button { padding: 9px 12px; font-size: 13px; }
   }
 </style>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
