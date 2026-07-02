@@ -1616,6 +1616,27 @@ function createTeacher() {
   renderTeachers();
 }
 
+function editTeacher(id) {
+  const teachers = getTeachers();
+  const t = teachers.find(x => x.id === id);
+  if (!t) return;
+  const newName = (prompt('교사 이름', t.name) || '').trim();
+  if (!newName) return;
+  const newId = (prompt('교사 아이디', t.id) || '').trim();
+  if (!newId) return;
+  if (newId !== id && USERS[newId]) { alert('이미 존재하는 아이디입니다.'); return; }
+  t.name = newName;
+  if (newId !== id) {
+    ['pw_', 'coin_', 'owned_', 'skin_'].forEach(pre => {
+      if (STORE[pre + id] !== undefined) { STORE[pre + newId] = STORE[pre + id]; delete STORE[pre + id]; }
+    });
+    t.id = newId;
+  }
+  setTeachers(teachers);
+  rebuildUsers();
+  renderTeachers();
+}
+
 function deleteTeacher(id) {
   const u = USERS[id];
   if (!u) return;
@@ -1637,7 +1658,7 @@ function renderTeachers() {
     <td style="color:#adb5bd;font-size:13px">${esc(t.id)}</td>
     <td style="text-align:center">${t.goldPerm ? '✓' : '−'}</td>
     <td style="text-align:center">${t.pwPerm ? '✓' : '−'}</td>
-    <td style="text-align:right"><button class="btn-pw-reset" onclick="deleteTeacher('${esc(t.id)}')">삭제</button></td>
+    <td style="text-align:right;white-space:nowrap"><button class="btn-pw-reset" onclick="editTeacher('${esc(t.id)}')">수정</button> <button class="btn-pw-reset" onclick="deleteTeacher('${esc(t.id)}')">삭제</button></td>
   </tr>`).join('');
   list.innerHTML = `<div class="card" style="padding:8px 12px;"><table class="pwreset-table">
     <thead><tr>
@@ -1645,7 +1666,7 @@ function renderTeachers() {
       <th style="width:120px">아이디</th>
       <th style="width:52px;text-align:center">골드</th>
       <th style="width:52px;text-align:center">비번</th>
-      <th style="width:60px"></th>
+      <th style="width:120px"></th>
     </tr></thead>
     <tbody>${rows}</tbody></table></div>`;
 }
