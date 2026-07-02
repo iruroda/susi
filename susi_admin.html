@@ -1651,7 +1651,12 @@ function deleteTeacher(id) {
 
 function renderTeachers() {
   const list = document.getElementById('teacher-list');
-  const teachers = getTeachers();
+  const teachers = getTeachers().slice().sort((a, b) => {   // 부장→1~10반, 이름순, 생성순(안정정렬)
+    const ra = a.tcls === 'head' ? -1 : a.tcls;
+    const rb = b.tcls === 'head' ? -1 : b.tcls;
+    if (ra !== rb) return ra - rb;
+    return a.name.localeCompare(b.name, 'ko');
+  });
   if (teachers.length === 0) { list.innerHTML = '<div class="no-data" style="padding:24px;background:#fff;border-radius:10px">등록된 교사가 없습니다.</div>'; return; }
   const rows = teachers.map(t => `<tr>
     <td>${esc(t.name)} <span class="class-badge">${t.tcls === 'head' ? '부장' : t.tcls + '반'}</span></td>
@@ -1686,24 +1691,24 @@ function renderGold() {
     if (search && !u.name.toLowerCase().includes(search) && !uid.includes(search)) return;
     rowsHtml += `<tr>
       <td><div class="avatar" style="width:30px;height:30px;font-size:12px">${u.name[0]}</div></td>
-      <td>${esc(u.name)} <span class="class-badge">${badgeLabel(u)}</span></td>
-      <td style="color:#adb5bd;font-size:13px">${uid}</td>
-      <td style="text-align:right">🪙 <input type="number" min="0" class="gold-input" value="${getCoin(uid)}" data-uid="${uid}" onchange="setGold(this)"> G</td>
+      <td style="white-space:nowrap">${esc(u.name)} <span class="class-badge">${badgeLabel(u)}</span></td>
+      <td style="color:#adb5bd;font-size:13px;white-space:nowrap">${uid}</td>
+      <td style="text-align:right;white-space:nowrap">🪙 <input type="number" min="0" class="gold-input" value="${getCoin(uid)}" data-uid="${uid}" onchange="setGold(this)"> G</td>
       <td style="font-size:12px">${ownedSkinsText(uid)}</td>
-      <td style="text-align:right"><button class="btn-pw-reset" onclick="resetSkins('${uid}')">스킨 초기화</button></td>
+      <td style="text-align:right;white-space:nowrap"><button class="btn-pw-reset" onclick="resetSkins('${uid}')">스킨 초기화</button></td>
     </tr>`;
   });
   if (rowsHtml === '') { list.innerHTML = '<div class="no-data" style="padding:24px;background:#fff;border-radius:10px">검색 결과가 없습니다.</div>'; return; }
-  list.innerHTML = `<div class="card" style="padding:8px 12px;"><table class="pwreset-table" style="table-layout:fixed;width:100%;">
+  list.innerHTML = `<div class="card" style="padding:8px 12px;"><div class="table-wrap"><table class="pwreset-table" style="width:100%;">
     <thead><tr>
-      <th style="width:38px"></th>
-      <th style="width:96px">이름</th>
-      <th style="width:74px">학번</th>
-      <th style="width:128px;text-align:right">골드</th>
-      <th>해금 스킨</th>
-      <th style="width:82px;text-align:right">스킨</th>
+      <th></th>
+      <th style="white-space:nowrap">이름</th>
+      <th style="white-space:nowrap">학번</th>
+      <th style="white-space:nowrap;text-align:right">골드</th>
+      <th style="min-width:140px">해금 스킨</th>
+      <th style="text-align:right">스킨</th>
     </tr></thead>
-    <tbody>${rowsHtml}</tbody></table></div>`;
+    <tbody>${rowsHtml}</tbody></table></div></div>`;
 }
 function ownedSkinsText(uid) {
   const owned = getOwned(uid);
@@ -1996,6 +2001,7 @@ document.addEventListener('contextmenu', function (e) { e.preventDefault(); });
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/12.15.0/firebase-app.js";
   import { getFirestore, doc, onSnapshot, setDoc } from "https://www.gstatic.com/firebasejs/12.15.0/firebase-firestore.js";
+  import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/12.15.0/firebase-auth.js";
   const firebaseConfig = {
     apiKey: "AIzaSyCqltNq1nOsTXLzlsXJmyXvAxA2pDDv-y4",
     authDomain: "susi-d9f34.firebaseapp.com",
@@ -2006,15 +2012,22 @@ document.addEventListener('contextmenu', function (e) { e.preventDefault(); });
   };
   const app = initializeApp(firebaseConfig);
   const db = getFirestore(app);
+  const auth = getAuth(app);
   const ref = doc(db, "state", "all");
   window.fbSave = (data) => {
     try { setDoc(ref, JSON.parse(JSON.stringify(data))).catch(e => console.warn('저장 실패', e)); }
     catch (e) { console.warn('저장 예외', e); }
   };
-  onSnapshot(ref,
-    (snap) => { if (window.applyState) window.applyState(snap.exists() ? snap.data() : {}); },
-    (err) => { console.warn('동기화 오류(로컬 캐시 사용)', err); if (window.applyState) window.applyState(null); }
-  );
+  function startSync() {
+    onSnapshot(ref,
+      (snap) => { if (window.applyState) window.applyState(snap.exists() ? snap.data() : {}); },
+      (err) => { console.warn('동기화 오류(로컬 캐시 사용)', err); if (window.applyState) window.applyState(null); }
+    );
+  }
+  // 익명 인증 후 동기화 시작 (규칙: 인증된 요청만 허용)
+  signInAnonymously(auth)
+    .then(startSync)
+    .catch((err) => { console.warn('익명 인증 실패(로컬 캐시 사용)', err); if (window.applyState) window.applyState(null); });
 </script>
 </body>
 </html>
