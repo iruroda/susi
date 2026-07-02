@@ -2092,8 +2092,12 @@ function recordScore(uid, name, score) {
 }
 function bestPerUser(list) {
   const m = {};
-  list.forEach(x => { if (!m[x.uid] || x.score > m[x.uid].score) m[x.uid] = x; });
-  return Object.values(m).sort((a, b) => b.score - a.score);
+  list.forEach(x => {
+    const cur = m[x.uid];
+    if (!cur || x.score > cur.score || (x.score === cur.score && x.ts < cur.ts)) m[x.uid] = x;
+  });
+  // 점수 내림차순, 동점이면 먼저 달성한(ts가 빠른) 사람이 위
+  return Object.values(m).sort((a, b) => (b.score - a.score) || (a.ts - b.ts));
 }
 function rankListHtml(list) {
   if (!list.length) return '<div class="no-data" style="padding:16px 4px;background:transparent;color:var(--gray)">기록 없음</div>';
