@@ -377,8 +377,8 @@
   body.pika .detail-table .group-row td { background: #f3e6a8; color: var(--primary); }
   body.pika .no-data { background: #fdf7cc !important; }
   body.pika #modal-bg > div { background: #fdf7cc !important; }
-  body.pika .btn-excel { background: #b07d33; }
-  body.pika .btn-excel:hover { background: #96692a; }
+  body.pika .btn-excel { background: #e8453c; }
+  body.pika .btn-excel:hover { background: #cc3a32; }
 
   .swatch-rija  { background-color: #ffbe8f; background-image: url('rijamong2.png'); background-size: contain; background-repeat: no-repeat; background-position: center; }
 
@@ -431,8 +431,8 @@
   body.rija .detail-table .group-row td { background: #ffdcc2; color: var(--primary); }
   body.rija .no-data { background: #fff3e6 !important; }
   body.rija #modal-bg > div { background: #fff3e6 !important; }
-  body.rija .btn-excel { background: #d24310; }
-  body.rija .btn-excel:hover { background: #b3390d; }
+  body.rija .btn-excel { background: #1098ad; }
+  body.rija .btn-excel:hover { background: #0b7c8c; }
 
   .swatch-blue  { background-color: #cfe3ff; background-image: url('kkobugi2.png'); background-size: contain; background-repeat: no-repeat; background-position: center; }
   .swatch-lavender { background-color: #e5dbfb; background-image: url('kuromi2.png'); background-size: contain; background-repeat: no-repeat; background-position: center; }
@@ -465,13 +465,13 @@
   body.blue .detail-table .group-row td { background: #dcecff; color: var(--primary); }
   body.blue .no-data { background: #f0f7ff !important; }
   body.blue #modal-bg > div { background: #f0f7ff !important; }
-  body.blue .btn-excel { background: #1971c2; }
-  body.blue .btn-excel:hover { background: #145a9e; }
+  body.blue .btn-excel { background: #f76707; }
+  body.blue .btn-excel:hover { background: #e8590c; }
 
   /* ── LAVENDER SKIN (라벤더 배경 + 하트 격자 + 쿠로미) ── */
   body.lavender {
-    --primary: #7048e8;
-    --primary-dark: #5a37c9;
+    --primary: rgb(146, 39, 143);
+    --primary-dark: rgb(116, 30, 114);
     --border: #d6c9f5;
     --light: #ece3fb;
     --shadow: 0 2px 12px rgba(112,72,232,0.15);
@@ -496,8 +496,8 @@
   body.lavender .detail-table .group-row td { background: #eae0ff; color: var(--primary); }
   body.lavender .no-data { background: #f6f2ff !important; }
   body.lavender #modal-bg > div { background: #f6f2ff !important; }
-  body.lavender .btn-excel { background: #7048e8; }
-  body.lavender .btn-excel:hover { background: #5a37c9; }
+  body.lavender .btn-excel { background: #e64980; }
+  body.lavender .btn-excel:hover { background: #c2255c; }
   .skin-name { font-size: 14px; font-weight: 600; color: var(--text); }
   .skin-check { position: absolute; top: 8px; right: 10px; color: var(--primary); font-weight: 700; opacity: 0; transition: opacity 0.15s; }
   .skin-option.active .skin-check { opacity: 1; }
@@ -676,7 +676,6 @@
 
   <div class="admin-body">
     <div class="sidebar">
-      <div class="sidebar-title">메뉴</div>
       <button class="sidebar-btn nav-btn active" id="nav-status"  onclick="toggleStatusMenu()">📋 입력 및 수정 <span class="menu-chevron" id="status-chevron">▾</span></button>
       <div class="submenu open" id="class-submenu">
         <button class="sidebar-btn cls-btn active" id="cls-btn-0"  onclick="selectClass(0)">전체</button>
@@ -690,7 +689,7 @@
         <button class="sidebar-btn cls-btn" id="cls-btn-8"  onclick="selectClass(8)">8반</button>
         <button class="sidebar-btn cls-btn" id="cls-btn-9"  onclick="selectClass(9)">9반</button>
         <button class="sidebar-btn cls-btn" id="cls-btn-10" onclick="selectClass(10)">10반</button>
-        <button class="sidebar-btn cls-btn" id="cls-btn-80" onclick="selectClass(80)">🎓 졸업생</button>
+        <button class="sidebar-btn cls-btn" id="cls-btn-80" onclick="selectClass(80)">졸업생</button>
       </div>
       <div class="sidebar-divider"></div>
       <button class="sidebar-btn nav-btn" id="nav-collect" onclick="toggleCollectMenu()">📊 모아보기 <span class="menu-chevron" id="collect-chevron">▸</span></button>
@@ -701,8 +700,8 @@
       </div>
       <div class="sidebar-divider"></div>
       <button class="sidebar-btn nav-btn" id="nav-teacher" onclick="selectView('teacher')">👩‍🏫 교사 설정</button>
-      <button class="sidebar-btn nav-btn" id="nav-gold" onclick="selectView('gold')">🪙 골드 설정</button>
-      <button class="sidebar-btn nav-btn" id="nav-pwreset" onclick="selectView('pwreset')">🔑 비밀번호 초기화</button>
+      <button class="sidebar-btn nav-btn" id="nav-gold" onclick="selectView('gold')">🪙 골드 및 스킨</button>
+      <button class="sidebar-btn nav-btn" id="nav-pwreset" onclick="selectView('pwreset')">🔑 비밀번호 관리</button>
     </div>
 
     <div class="admin-main">
@@ -1272,10 +1271,25 @@ function setFilter(f) {
   renderAdmin();
 }
 
+function updateClassCounts() {
+  const all = Object.keys(USERS).filter(id => USERS[id].role === 'student');
+  const setLbl = (cls, name) => {
+    const el = document.getElementById('cls-btn-' + cls);
+    if (!el) return;
+    const grp = cls === 0 ? all : all.filter(id => USERS[id].cls === cls);
+    const done = grp.filter(id => studentFilled(id) > 0).length;
+    el.textContent = `${name} (${done}/${grp.length})`;
+  };
+  setLbl(0, '전체');
+  for (let c = 1; c <= 10; c++) setLbl(c, c + '반');
+  setLbl(80, '졸업생');
+}
+
 function renderAdmin() {
   const search = document.getElementById('search-input').value.trim().toLowerCase();
   const list   = document.getElementById('student-list');
   list.innerHTML = '';
+  updateClassCounts();
   document.getElementById('grad-add-bar').style.display = (selectedClass === 80 && isAdminLike()) ? 'block' : 'none';
 
   let ids = Object.keys(USERS).filter(id => USERS[id].role === 'student');
@@ -1476,6 +1490,7 @@ function adminSave(uid) {
   setApps(uid, data);
   adminRows[uid] = data.length ? data.map(r => ({ ...r })) : [{}];
   updateRowBadge(uid);
+  updateClassCounts();
   const msg = document.getElementById('adminsave-' + uid);
   if (msg) { msg.classList.add('show'); setTimeout(() => msg.classList.remove('show'), 2500); }
 }
@@ -1626,13 +1641,26 @@ function renderGold() {
       <td>${esc(u.name)} <span class="class-badge">${badgeLabel(u)}</span></td>
       <td style="color:#adb5bd;font-size:13px">${uid}</td>
       <td style="text-align:right">🪙 <input type="number" min="0" class="gold-input" value="${getCoin(uid)}" data-uid="${uid}" onchange="setGold(this)"> G</td>
+      <td style="font-size:12px">${ownedSkinsText(uid)}</td>
       <td style="text-align:right"><button class="btn-pw-reset" onclick="resetSkins('${uid}')">스킨 초기화</button></td>
     </tr>`;
   });
   if (rowsHtml === '') { list.innerHTML = '<div class="no-data" style="padding:24px;background:#fff;border-radius:10px">검색 결과가 없습니다.</div>'; return; }
-  list.innerHTML = `<div class="card" style="padding:8px 12px;"><table class="pwreset-table">
-    <thead><tr><th></th><th>이름</th><th>학번</th><th style="text-align:right">골드</th><th style="text-align:right">스킨</th></tr></thead>
+  list.innerHTML = `<div class="card" style="padding:8px 12px;"><table class="pwreset-table" style="table-layout:fixed;width:100%;">
+    <thead><tr>
+      <th style="width:38px"></th>
+      <th style="width:96px">이름</th>
+      <th style="width:74px">학번</th>
+      <th style="width:128px;text-align:right">골드</th>
+      <th>해금 스킨</th>
+      <th style="width:82px;text-align:right">스킨</th>
+    </tr></thead>
     <tbody>${rowsHtml}</tbody></table></div>`;
+}
+function ownedSkinsText(uid) {
+  const owned = getOwned(uid);
+  const paid = SKINS.filter(m => SKIN_META[m].price > 0 && owned.includes(m)).map(m => SKIN_META[m].name);
+  return paid.length ? paid.join('·') : '<span style="color:var(--gray)">없음</span>';
 }
 function setGold(el) {
   const v = Math.max(0, parseInt(el.value) || 0);
@@ -1887,6 +1915,7 @@ window.addEventListener('message', (e) => {
 function getScores() { try { const v = JSON.parse(localStorage.getItem('mb_scores')); if (Array.isArray(v)) return v; } catch {} return []; }
 function setScores(a) { localStorage.setItem('mb_scores', JSON.stringify(a)); }
 function recordScore(uid, name, score) {
+  if (USERS[uid] && USERS[uid].role === 'admin') return;   // 관리자는 랭킹 제외
   const s = getScores();
   s.push({ uid, name, score: Math.round(score * 10) / 10, ts: Date.now() });
   if (s.length > 1000) s.splice(0, s.length - 1000);
@@ -1903,7 +1932,7 @@ function rankListHtml(list) {
     `<li><span class="rank-name">${esc(x.name)}</span><span class="rank-score">${x.score.toFixed(1)}초</span></li>`).join('') + '</ol>';
 }
 function openRankModal() {
-  const scores = getScores();
+  const scores = getScores().filter(x => x.uid !== 'admin');   // 관리자 제외
   const weekAgo = Date.now() - 7 * 24 * 3600 * 1000;
   document.getElementById('rank-all').innerHTML = rankListHtml(bestPerUser(scores).slice(0, 10));
   document.getElementById('rank-week').innerHTML = rankListHtml(bestPerUser(scores.filter(x => x.ts >= weekAgo)).slice(0, 10));
