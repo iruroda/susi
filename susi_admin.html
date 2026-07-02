@@ -1134,12 +1134,11 @@ function renderEntry(i, rowObj, ctx, uid) {
     ? `data-ctx="s" data-i="${i}" data-key="${f.key}"`
     : `data-ctx="a" data-uid="${uid}" data-i="${i}" data-key="${f.key}"`;
   const block = f => `<div class="fcell" style="width:${f.w}px"><label class="flbl">${f.label}</label>${renderCell(f, rowObj[f.key], attrs(f))}</div>`;
-  let line1 = '', line2 = '', inLine2 = false;
-  FIELDS.forEach(f => { if (f.key === 'deadline') inLine2 = true; (inLine2 ? line2 += block(f) : line1 += block(f)); });
+  const cells = FIELDS.map(block).join('');   // 화면 폭에 맞춰 자동 줄바꿈
   const del = ctx === 's' ? `delRow(${i})` : `adminDelRow('${uid}',${i})`;
   return `<div class="entry-card">
     <div class="entry-num">${i + 1}</div>
-    <div class="entry-body"><div class="entry-line">${line1}</div><div class="entry-line">${line2}</div></div>
+    <div class="entry-body"><div class="entry-line">${cells}</div></div>
     <button class="btn-del" onclick="${del}">✕</button>
   </div>`;
 }
@@ -1818,7 +1817,12 @@ function prepDatalist(el) {
   if (typeof SUSI_DB === 'undefined') return;
   const dl = el.dataset.dl;
   if (dl === 'univ') {
-    if (!document.getElementById('dl-univ')) setDatalist('dl-univ', SUSI_DB.universities);
+    if (!document.getElementById('dl-univ')) {
+      const list = (SUSI_DB.universities || [])
+        .filter(n => n === 'KENTECH' || /(대|ST)$/.test(n) || /대\([^)]*\)$/.test(n))  // 학교만
+        .sort((a, b) => a.localeCompare(b, 'ko'));   // 가나다 정렬 (학교명만)
+      setDatalist('dl-univ', list);
+    }
     return;
   }
   const d = el.dataset;
