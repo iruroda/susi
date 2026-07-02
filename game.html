@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <title>몬스터볼 피하기</title>
 <style>
-  * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; -webkit-touch-callout: none; }
   html, body {
     height: 100%;
     background: transparent;
@@ -228,6 +228,8 @@
 
 <script>
 (function () {
+  // 우클릭/롱프레스(그림 저장) 컨텍스트 메뉴 비활성화
+  document.addEventListener('contextmenu', function (e) { e.preventDefault(); });
   const canvas = document.getElementById('game');
   const ctx = canvas.getContext('2d');
   const stage = document.getElementById('stage');
