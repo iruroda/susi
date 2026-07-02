@@ -95,8 +95,9 @@
   .entry-card { display: flex; align-items: flex-start; gap: 10px; padding: 12px 14px; border: 1px solid var(--border); border-radius: 10px; margin-bottom: 10px; background: #fff; }
   .entry-num { font-size: 12px; color: var(--gray); font-weight: 700; min-width: 18px; text-align: center; padding-top: 26px; }
   .entry-body { flex: 1; display: flex; flex-direction: column; gap: 10px; min-width: 0; }
-  .entry-line { display: flex; flex-wrap: wrap; gap: 8px; }
-  .fcell { display: flex; flex-direction: column; gap: 3px; }
+  .entry-line { display: flex; flex-wrap: wrap; gap: 8px; align-items: flex-start; }
+  .fcell { display: flex; flex-direction: column; gap: 3px; flex: 0 0 auto; max-width: 100%; }
+  .fcell .cell-input, .fcell .cell-check { max-width: 100%; }
   .flbl { font-size: 11px; color: var(--gray); font-weight: 600; white-space: nowrap; }
   .entry-card .btn-del { margin-top: 24px; flex-shrink: 0; }
   body.dark .entry-card { background: #20242c; }
@@ -1839,8 +1840,14 @@ function renderCell(f, value, attrs) {
     return `<select class="cell-input" ${attrs} ${style} onchange="cellChange(this)">${opts}</select>`;
   }
   if (f.type === 'selectText') {
-    const id = ensureDatalist(f);
-    return `<input class="cell-input" type="text" list="${id}" value="${esc(v)}" placeholder="${f.label}" ${attrs} ${style} oninput="cellChange(this)">`;
+    // 아이폰(iOS)에서도 열리도록 네이티브 <select> 사용
+    const allowCustom = (f.key === 'type');   // 전형유형만 직접 입력 허용
+    let opts = '<option value="">선택</option>';
+    f.options.forEach(o => opts += `<option value="${esc(o)}" ${v === o ? 'selected' : ''}>${esc(o)}</option>`);
+    if (v && !f.options.includes(v)) opts += `<option value="${esc(v)}" selected>${esc(v)}</option>`;  // 기존 직접입력값 유지
+    if (allowCustom) opts += '<option value="__custom">직접 입력…</option>';
+    const handler = allowCustom ? 'selectTextChange(this)' : 'cellChange(this)';
+    return `<select class="cell-input" ${attrs} ${style} onchange="${handler}">${opts}</select>`;
   }
   const ph = f.ph !== undefined ? f.ph : f.label;
   const dl = f.dl ? `list="dl-${f.dl}" data-dl="${f.dl}" onfocus="prepDatalist(this)"` : '';
@@ -1889,6 +1896,21 @@ function cellChange(el) {
   const val = el.type === 'checkbox' ? el.checked : el.value;
   if (d.ctx === 's') rows[i][key] = val;
   else adminRows[d.uid][i][key] = val;
+}
+
+// 전형유형 '직접 입력…' 선택 시 값 입력받아 옵션 추가
+function selectTextChange(el) {
+  if (el.value === '__custom') {
+    const txt = (prompt('전형유형을 직접 입력하세요.', '') || '').trim();
+    if (txt) {
+      const cu = el.querySelector('option[value="__custom"]');
+      const o = document.createElement('option');
+      o.value = txt; o.textContent = txt; o.selected = true;
+      el.insertBefore(o, cu);
+      el.value = txt;
+    } else { el.value = ''; }
+  }
+  cellChange(el);
 }
 
 function rowHasContent(r) {
