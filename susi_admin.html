@@ -309,6 +309,7 @@
   .rank-list li:nth-child(2)::before { color: #adb5bd; }
   .rank-list li:nth-child(3)::before { color: #d9822b; }
   .rank-name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .rank-id { font-size: 11px; color: var(--gray); font-weight: 400; margin-left: 3px; }
   .rank-score { font-weight: 700; color: var(--primary); flex-shrink: 0; }
 
   /* ── SKIN MODAL OPTIONS ── */
@@ -615,6 +616,11 @@
     <button class="btn-login" onclick="doLogin()">로그인</button>
     <div class="login-error" id="login-err"></div>
   </div>
+</div>
+
+<!-- 새로고침 시 세션 복원 로딩 (로그인 화면 깜빡임 방지) -->
+<div id="boot-loading" style="display:none;position:fixed;inset:0;z-index:2000;background:linear-gradient(135deg,#3b5bdb 0%,#1c3199 100%);color:#fff;flex-direction:column;align-items:center;justify-content:center;font-family:inherit;">
+  <div style="font-size:16px;font-weight:700;">불러오는 중…</div>
 </div>
 
 <!-- ── STUDENT PAGE ── -->
@@ -964,13 +970,20 @@ const ALL_CLASSES = {
 // ── 공유 저장소 (Firestore + localStorage 캐시) ──
 let STORE = {};
 try { STORE = JSON.parse(localStorage.getItem('susi_state') || '{}') || {}; } catch { STORE = {}; }
-let fbReady = false, saveTimer = null;
+let fbReady = false, saveTimer = null, writePending = false;
 function saveState() {
   try { localStorage.setItem('susi_state', JSON.stringify(STORE)); } catch {}
-  if (window.fbSave) { clearTimeout(saveTimer); saveTimer = setTimeout(() => window.fbSave(STORE), 400); }
+  if (window.fbSave) {
+    writePending = true;                 // 로컬 미저장 변경 있음 → 동기화가 덮어쓰지 않게
+    clearTimeout(saveTimer);
+    saveTimer = setTimeout(() => window.fbSave(STORE), 400);
+    // 안전장치: 저장 완료 콜백이 안 와도 6초 뒤 잠금 해제
+    setTimeout(() => { writePending = false; }, 6000);
+  }
 }
+window.__writeDone = function () { writePending = false; };
 window.applyState = function (data) {
-  if (data && typeof data === 'object') {
+  if (data && typeof data === 'object' && !writePending) {   // 저장 대기 중이면 서버본으로 덮지 않음
     STORE = data;
     try { localStorage.setItem('susi_state', JSON.stringify(STORE)); } catch {}
   }
@@ -985,6 +998,14 @@ window.applyState = function (data) {
 };
 // Firebase가 4초 내 응답 없으면 로컬 캐시로라도 진행
 setTimeout(() => { if (!fbReady) { fbReady = true; rebuildUsers(); try { tryRestoreSession(); } catch (e) {} } }, 4000);
+
+// 새로고침 시 세션이 있으면 로그인 화면 대신 '불러오는 중'을 먼저 보여 깜빡임 방지
+try {
+  if (sessionStorage.getItem('session_uid')) {
+    document.getElementById('login-page').style.display = 'none';
+    document.getElementById('boot-loading').style.display = 'flex';
+  }
+} catch (e) {}
 
 // ── BUILD USERS (STORE 기준으로 재구성) ──
 const USERS = {};
@@ -1092,11 +1113,13 @@ function enterSession(id) {
 }
 
 // 새로고침 시 세션 복원 (데이터 준비 후 1회)
+function hideBoot() { const b = document.getElementById('boot-loading'); if (b) b.style.display = 'none'; }
 function tryRestoreSession() {
-  if (currentUser) return;
+  if (currentUser) { hideBoot(); return; }
   let uid = null;
   try { uid = sessionStorage.getItem('session_uid'); } catch (e) {}
-  if (uid && USERS[uid]) enterSession(uid);
+  if (uid && USERS[uid]) { enterSession(uid); hideBoot(); }
+  else { hideBoot(); document.getElementById('login-page').style.display = 'flex'; }
 }
 
 function setupAdminForUser() {
@@ -2002,8 +2025,11 @@ function bestPerUser(list) {
 }
 function rankListHtml(list) {
   if (!list.length) return '<div class="no-data" style="padding:16px 4px;background:transparent;color:var(--gray)">기록 없음</div>';
-  return '<ol class="rank-list">' + list.map(x =>
-    `<li><span class="rank-name">${esc(x.name)}</span><span class="rank-score">${x.score.toFixed(1)}초</span></li>`).join('') + '</ol>';
+  return '<ol class="rank-list">' + list.map(x => {
+    const isStudent = USERS[x.uid] && USERS[x.uid].role === 'student';
+    const idTag = isStudent ? ` <span class="rank-id">${esc(x.uid)}</span>` : '';
+    return `<li><span class="rank-name">${esc(x.name)}${idTag}</span><span class="rank-score">${x.score.toFixed(1)}초</span></li>`;
+  }).join('') + '</ol>';
 }
 function openRankModal() {
   const scores = getScores().filter(x => x.uid !== 'admin');   // 관리자 제외
@@ -2036,8 +2062,11 @@ document.addEventListener('contextmenu', function (e) { e.preventDefault(); });
   const auth = getAuth(app);
   const ref = doc(db, "state", "all");
   window.fbSave = (data) => {
-    try { setDoc(ref, JSON.parse(JSON.stringify(data))).catch(e => console.warn('저장 실패', e)); }
-    catch (e) { console.warn('저장 예외', e); }
+    try {
+      setDoc(ref, JSON.parse(JSON.stringify(data)))
+        .catch(e => console.warn('저장 실패', e))
+        .finally(() => { if (window.__writeDone) window.__writeDone(); });
+    } catch (e) { console.warn('저장 예외', e); if (window.__writeDone) window.__writeDone(); }
   };
   function startSync() {
     onSnapshot(ref,
