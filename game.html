@@ -308,6 +308,8 @@
   // 저장된 설정 복원 (단독 실행용) — 임베드 시 부모가 보내는 설정이 곧바로 덮어씀
   try { soundOn = localStorage.getItem('mb_sound') === '1'; } catch (e) {}
   updateSoundBtn();
+  // 임베드(수시지원 페이지) 시에는 모달 하단에 토글이 있으므로 게임 안 버튼은 숨김
+  if (window.parent && window.parent !== window) soundBtn.style.display = 'none';
   window.addEventListener('message', (e) => {
     const d = e.data;
     if (d && typeof d === 'object' && d.type === 'monsterball-sound') {

@@ -922,6 +922,7 @@
   <div class="pw-modal" style="max-width:540px;padding:16px;">
     <iframe id="game-frame" title="몬스터볼 피하기" style="width:100%;aspect-ratio:1/1.2;border:none;border-radius:10px;display:block;background:transparent;"></iframe>
     <div class="pw-modal-footer">
+      <button class="btn-modal-cancel" id="game-sound-btn" onclick="toggleGameSound()">🔇 Off</button>
       <button class="btn-modal-cancel" onclick="openRankModal()">🏆 랭킹 확인</button>
       <button class="btn-modal-cancel" onclick="closeGameModal()">닫기</button>
     </div>
@@ -2055,7 +2056,24 @@ function openGameModal() {
     try { frame.contentWindow.postMessage({ type: 'monsterball-sound', on: !!(currentUser && STORE['sound_' + currentUser.id]) }, '*'); } catch (e) {}
   };
   frame.src = 'game.html';
+  updateGameSoundBtn();
   document.getElementById('game-modal-bg').classList.add('open');
+}
+// 게임 사운드 토글 (게임 모달 하단, 랭킹 확인 왼쪽)
+function updateGameSoundBtn() {
+  const b = document.getElementById('game-sound-btn');
+  if (!b) return;
+  const on = !!(currentUser && STORE['sound_' + currentUser.id]);
+  b.textContent = on ? '🔊 On' : '🔇 Off';
+}
+function toggleGameSound() {
+  if (!currentUser) return;
+  const on = !STORE['sound_' + currentUser.id];
+  STORE['sound_' + currentUser.id] = on;
+  saveState();
+  updateGameSoundBtn();
+  const frame = document.getElementById('game-frame');
+  try { frame.contentWindow.postMessage({ type: 'monsterball-sound', on }, '*'); } catch (e) {}
 }
 function closeGameModal() {
   document.getElementById('game-modal-bg').classList.remove('open');
@@ -2066,7 +2084,7 @@ window.addEventListener('message', (e) => {
   const data = e.data;
   if (!data || typeof data !== 'object') return;
   if (data.type === 'monsterball-sound-change') {
-    if (currentUser) { STORE['sound_' + currentUser.id] = !!data.on; saveState(); }
+    if (currentUser) { STORE['sound_' + currentUser.id] = !!data.on; saveState(); updateGameSoundBtn(); }
     return;
   }
   if (data.type === 'monsterball-gameover') {
