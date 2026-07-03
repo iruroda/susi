@@ -66,6 +66,10 @@
   body.rija .mascot-rija { display: inline-block; }
   body.blue .mascot-blue { display: inline-block; }
   body.lavender .mascot-lavender { display: inline-block; }
+  body.mint .mascot-mint { display: inline-block; }
+  body.beige .mascot-beige { display: inline-block; }
+  body.white2 .mascot-white2 { display: inline-block; }
+  body.lemon .mascot-lemon { display: inline-block; }
 
   .btn-logout {
     padding: 6px 14px; background: var(--light); border: 1px solid var(--border);
@@ -89,6 +93,13 @@
     vertical-align: middle; line-height: normal;
   }
   .cell-input:focus { border-color: var(--primary); }
+  /* iOS 날짜칸이 네이티브 컨트롤 때문에 커지고 옆칸을 침범하는 것 방지 (박스 크기 강제) */
+  input[type="date"].cell-input {
+    -webkit-appearance: none; appearance: none;
+    min-width: 0; max-width: 100%; box-sizing: border-box;
+    height: 34px; line-height: 18px;
+  }
+  input[type="date"].cell-input::-webkit-date-and-time-value { text-align: left; margin: 0; padding: 0; }
   .cell-check { width: 18px; height: 18px; display: block; margin: 6px auto 0; cursor: pointer; }
 
   /* ── 입력 카드 (항목당 2줄) ── */
@@ -327,10 +338,12 @@
   .rank-score { font-weight: 700; color: var(--primary); flex-shrink: 0; }
 
   /* ── SKIN MODAL OPTIONS ── */
-  .skin-options { display: flex; flex-wrap: wrap; gap: 12px; margin-bottom: 8px; }
+  .skin-options { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 8px; }
+  #skin-modal-bg .pw-modal { max-height: 88vh; display: flex; flex-direction: column; }
+  #skin-modal-bg .skin-options { overflow-y: auto; flex: 1; min-height: 0; }
   .skin-option {
-    flex: 1 1 40%; min-width: 120px; display: flex; flex-direction: column; align-items: center; gap: 8px;
-    padding: 18px 12px; border: 2px solid var(--border); border-radius: 12px;
+    min-width: 0; display: flex; flex-direction: column; align-items: center; gap: 8px;
+    padding: 14px 8px; border: 2px solid var(--border); border-radius: 12px;
     background: #fff; cursor: pointer; font-family: inherit; transition: all 0.15s; position: relative;
   }
   .skin-option:hover { border-color: var(--primary); }
@@ -451,6 +464,10 @@
 
   .swatch-blue  { background-color: #cfe3ff; background-image: url('kkobugi2.png'); background-size: contain; background-repeat: no-repeat; background-position: center; }
   .swatch-lavender { background-color: #e5dbfb; background-image: url('kuromi2.png'); background-size: contain; background-repeat: no-repeat; background-position: center; }
+  .swatch-mint   { background-color: #e6f7ee; background-image: url('kero2.png');   background-size: contain; background-repeat: no-repeat; background-position: center; }
+  .swatch-beige  { background-color: #f5ecd9; background-image: url('manggo2.png'); background-size: contain; background-repeat: no-repeat; background-position: center; }
+  .swatch-white2 { background-color: #ffffff; background-image: url('gana2.png');   background-size: contain; background-repeat: no-repeat; background-position: center; }
+  .swatch-lemon  { background-color: #fff6b8; background-image: url('tama2.png');   background-size: contain; background-repeat: no-repeat; background-position: center; }
 
   /* ── BLUE SKIN (하늘 배경 + 파란 포켓볼 격자 + 꼬부기) ── */
   body.blue {
@@ -513,6 +530,89 @@
   body.lavender #modal-bg > div { background: #f6f2ff !important; }
   body.lavender .btn-excel { background: #e64980; }
   body.lavender .btn-excel:hover { background: #c2255c; }
+
+  /* ── MINT SKIN (녹색/청녹색 + 달팽이·튤립 바둑판) ── */
+  body.mint {
+    --primary: #74b816; --primary-dark: #5c940d; --border: #b7e4c7; --light: #e6f7ee;
+    --shadow: 0 2px 12px rgba(116,184,22,0.15);
+    background-color: #e6f7ee; background-image: url('kero_bg.png'); background-repeat: repeat; background-size: 150px;
+  }
+  body.mint #login-page { background: linear-gradient(135deg, #69db7c 0%, #2f9e44 100%); }
+  body.mint .login-card, body.mint .topbar, body.mint .card, body.mint .sidebar, body.mint .stat-card, body.mint .student-row, body.mint .pw-modal, body.mint .skin-option, body.mint .entry-card, body.mint .btn-pw-change { background: #f3fbf6; }
+  body.mint .login-hint, body.mint .apps-table th, body.mint .detail-table th, body.mint .student-detail, body.mint .apps-count.none, body.mint .btn-logout, body.mint .btn-skin, body.mint .layout-btn, body.mint .filter-btn, body.mint input[type="text"], body.mint input[type="password"], body.mint .cell-input, body.mint .search-input, body.mint .pw-field input { background: #f8fdfa; }
+  body.mint .filter-btn.active, body.mint .layout-btn.active { background: var(--primary); color: #fff; border-color: var(--primary); }
+  body.mint .sidebar-btn.active { background: #c3f0d2; color: var(--primary); }
+  body.mint .sidebar-btn:hover, body.mint .btn-add:hover, body.mint .btn-skin:hover, body.mint .filter-btn:hover { background: #d3f9de; }
+  body.mint .avatar { background: #c3f0d2; color: var(--primary); }
+  body.mint .class-badge { background: #c3f0d2; color: #2b8a3e; }
+  body.mint .detail-table .group-row td { background: #d3f9de; color: var(--primary); }
+  body.mint .no-data { background: #f3fbf6 !important; }
+  body.mint #modal-bg > div { background: #f3fbf6 !important; }
+  body.mint .btn-excel { background: #00a99d; }
+  body.mint .btn-excel:hover { background: #008a80; }
+
+  /* ── BEIGE SKIN (하늘색/연핑크 + 강아지 배경) ── */
+  body.beige {
+    --primary: #4dabf7; --primary-dark: #339af0; --border: #e6d8b8; --light: #f2e8d0;
+    --shadow: 0 2px 12px rgba(180,150,90,0.15);
+    background-color: #f5ecd9; background-image: url('manggo_bg.png'); background-repeat: repeat; background-size: 200px;
+  }
+  body.beige #login-page { background: linear-gradient(135deg, #ffe8b8 0%, #d9b878 100%); }
+  body.beige .login-card, body.beige .topbar, body.beige .card, body.beige .sidebar, body.beige .stat-card, body.beige .student-row, body.beige .pw-modal, body.beige .skin-option, body.beige .entry-card, body.beige .btn-pw-change { background: #fbf6ea; }
+  body.beige .login-hint, body.beige .apps-table th, body.beige .detail-table th, body.beige .student-detail, body.beige .apps-count.none, body.beige .btn-logout, body.beige .btn-skin, body.beige .layout-btn, body.beige .filter-btn, body.beige input[type="text"], body.beige input[type="password"], body.beige .cell-input, body.beige .search-input, body.beige .pw-field input { background: #fdfaf1; }
+  body.beige .filter-btn.active, body.beige .layout-btn.active { background: var(--primary); color: #fff; border-color: var(--primary); }
+  body.beige .sidebar-btn.active { background: #efe2c4; color: var(--primary); }
+  body.beige .sidebar-btn:hover, body.beige .btn-add:hover, body.beige .btn-skin:hover, body.beige .filter-btn:hover { background: #f3e9d2; }
+  body.beige .avatar { background: #efe2c4; color: var(--primary); }
+  body.beige .class-badge { background: #efe2c4; color: #1c7ed6; }
+  body.beige .detail-table .group-row td { background: #f0e6cc; color: var(--primary); }
+  body.beige .no-data { background: #fbf6ea !important; }
+  body.beige #modal-bg > div { background: #fbf6ea !important; }
+  body.beige .btn-excel { background: #f783ac; }
+  body.beige .btn-excel:hover { background: #e64980; }
+
+  /* ── WHITE2 SKIN (회색 톤 + 회색 체크무늬) ── */
+  body.white2 {
+    --primary: #868e96; --primary-dark: #495057; --border: #dee2e6; --light: #f1f3f5;
+    --shadow: 0 2px 12px rgba(0,0,0,0.1);
+    background-color: #ffffff; background-image: url('gana_bg.png'); background-repeat: repeat; background-size: auto;
+  }
+  body.white2 #login-page { background: linear-gradient(135deg, #ced4da 0%, #868e96 100%); }
+  body.white2 .login-card, body.white2 .topbar, body.white2 .card, body.white2 .sidebar, body.white2 .stat-card, body.white2 .student-row, body.white2 .pw-modal, body.white2 .skin-option, body.white2 .entry-card, body.white2 .btn-pw-change { background: #ffffff; }
+  body.white2 .login-hint, body.white2 .apps-table th, body.white2 .detail-table th, body.white2 .student-detail, body.white2 .apps-count.none, body.white2 .btn-logout, body.white2 .btn-skin, body.white2 .layout-btn, body.white2 .filter-btn, body.white2 input[type="text"], body.white2 input[type="password"], body.white2 .cell-input, body.white2 .search-input, body.white2 .pw-field input { background: #fafbfc; }
+  body.white2 .filter-btn.active, body.white2 .layout-btn.active { background: var(--primary); color: #fff; border-color: var(--primary); }
+  body.white2 .sidebar-btn.active { background: #e9ecef; color: var(--primary-dark); }
+  body.white2 .sidebar-btn:hover, body.white2 .btn-add:hover, body.white2 .btn-skin:hover, body.white2 .filter-btn:hover { background: #f1f3f5; }
+  body.white2 .avatar { background: #e9ecef; color: var(--primary-dark); }
+  body.white2 .class-badge { background: #e9ecef; color: #495057; }
+  body.white2 .detail-table .group-row td { background: #f1f3f5; color: var(--primary-dark); }
+  body.white2 .no-data { background: #ffffff !important; }
+  body.white2 #modal-bg > div { background: #ffffff !important; }
+  body.white2 .btn-excel { background: #495057; }
+  body.white2 .btn-excel:hover { background: #343a40; }
+
+  /* ── LEMON SKIN (노랑/연두 + 흰색·하늘색 세로 스트라이프, 메뉴 레몬) ── */
+  body.lemon {
+    --primary: #f5b800; --primary-dark: #e0a800; --border: #f0e2a0; --light: #ffffa0;
+    --shadow: 0 2px 12px rgba(230,180,0,0.15);
+    background: repeating-linear-gradient(90deg, #ffffff 0 34px, #d0ebff 34px 68px);
+  }
+  body.lemon #login-page { background: linear-gradient(135deg, #fff3a0 0%, #ffd43b 100%); }
+  body.lemon .topbar, body.lemon .sidebar { background: #ffffa0; }
+  body.lemon .topbar-title { color: #8a6d00; }
+  body.lemon .login-card, body.lemon .card, body.lemon .stat-card, body.lemon .student-row, body.lemon .pw-modal, body.lemon .skin-option, body.lemon .entry-card, body.lemon .btn-pw-change { background: #fffdf0; }
+  body.lemon .login-hint, body.lemon .apps-table th, body.lemon .detail-table th, body.lemon .student-detail, body.lemon .apps-count.none, body.lemon .btn-logout, body.lemon .btn-skin, body.lemon .layout-btn, body.lemon .filter-btn, body.lemon input[type="text"], body.lemon input[type="password"], body.lemon .cell-input, body.lemon .search-input, body.lemon .pw-field input { background: #fffdf5; }
+  body.lemon .filter-btn.active, body.lemon .layout-btn.active { background: var(--primary); color: #1a1a1a; border-color: var(--primary); }
+  body.lemon .btn-login, body.lemon .btn-save, body.lemon .btn-modal-ok { color: #1a1a1a; }
+  body.lemon .sidebar-btn.active { background: #ffe066; color: #8a6d00; }
+  body.lemon .sidebar-btn:hover, body.lemon .btn-add:hover, body.lemon .btn-skin:hover, body.lemon .filter-btn:hover { background: #fff0c2; }
+  body.lemon .avatar { background: #ffe066; color: #8a6d00; }
+  body.lemon .class-badge { background: #ffe066; color: #8a6d00; }
+  body.lemon .detail-table .group-row td { background: #ffffa0; color: #8a6d00; }
+  body.lemon .no-data { background: #fffdf0 !important; }
+  body.lemon #modal-bg > div { background: #fffdf0 !important; }
+  body.lemon .btn-excel { background: #82c91e; }
+  body.lemon .btn-excel:hover { background: #74b816; }
   .skin-name { font-size: 14px; font-weight: 600; color: var(--text); }
   .skin-check { position: absolute; top: 8px; right: 10px; color: var(--primary); font-weight: 700; opacity: 0; transition: opacity 0.15s; }
   .skin-option.active .skin-check { opacity: 1; }
@@ -648,6 +748,10 @@
       <img class="skin-mascot mascot-rija" src="rijamong1.png" alt="">
       <img class="skin-mascot mascot-blue" src="kkobugi1.png" alt="">
       <img class="skin-mascot mascot-lavender" src="kuromi1.png" alt="">
+      <img class="skin-mascot mascot-mint" src="kero1.png" alt="">
+      <img class="skin-mascot mascot-beige" src="manggo1.png" alt="">
+      <img class="skin-mascot mascot-white2" src="gana1.png" alt="">
+      <img class="skin-mascot mascot-lemon" src="tama1.png" alt="">
     </div>
     <div class="topbar-user">
       <span id="st-username"></span>
@@ -695,6 +799,10 @@
       <img class="skin-mascot mascot-rija" src="rijamong1.png" alt="">
       <img class="skin-mascot mascot-blue" src="kkobugi1.png" alt="">
       <img class="skin-mascot mascot-lavender" src="kuromi1.png" alt="">
+      <img class="skin-mascot mascot-mint" src="kero1.png" alt="">
+      <img class="skin-mascot mascot-beige" src="manggo1.png" alt="">
+      <img class="skin-mascot mascot-white2" src="gana1.png" alt="">
+      <img class="skin-mascot mascot-lemon" src="tama1.png" alt="">
     </div>
     <div class="topbar-user">
       <span id="admin-username">관리자</span>
@@ -909,6 +1017,30 @@
         <span class="skin-name">라벤더</span>
         <span class="skin-check">✓</span>
         <span class="skin-price" id="price-lavender">🪙100G</span>
+      </button>
+      <button class="skin-option" id="skin-opt-mint" onclick="applySkin('mint')">
+        <span class="skin-swatch swatch-mint"></span>
+        <span class="skin-name">민트</span>
+        <span class="skin-check">✓</span>
+        <span class="skin-price" id="price-mint">🪙100G</span>
+      </button>
+      <button class="skin-option" id="skin-opt-beige" onclick="applySkin('beige')">
+        <span class="skin-swatch swatch-beige"></span>
+        <span class="skin-name">베이지</span>
+        <span class="skin-check">✓</span>
+        <span class="skin-price" id="price-beige">🪙100G</span>
+      </button>
+      <button class="skin-option" id="skin-opt-white2" onclick="applySkin('white2')">
+        <span class="skin-swatch swatch-white2"></span>
+        <span class="skin-name">모노</span>
+        <span class="skin-check">✓</span>
+        <span class="skin-price" id="price-white2">🪙100G</span>
+      </button>
+      <button class="skin-option" id="skin-opt-lemon" onclick="applySkin('lemon')">
+        <span class="skin-swatch swatch-lemon"></span>
+        <span class="skin-name">레몬</span>
+        <span class="skin-check">✓</span>
+        <span class="skin-price" id="price-lemon">🪙100G</span>
       </button>
     </div>
     <div class="pw-msg" id="skin-msg"></div>
@@ -1964,14 +2096,18 @@ function rowHasContent(r) {
 
 
 // ── SKIN & 재화 (사용자 아이디 귀속) ──
-const SKINS = ['light', 'dark', 'pika', 'rija', 'blue', 'lavender'];
+const SKINS = ['light', 'dark', 'pika', 'rija', 'blue', 'lavender', 'mint', 'beige', 'white2', 'lemon'];
 const SKIN_META = {
   light:    { name: '화이트',   price: 0 },
   dark:     { name: '블랙',     price: 0 },
   pika:     { name: '옐로',     price: 100 },
   rija:     { name: '레드',     price: 100 },
   blue:     { name: '블루',     price: 100 },
-  lavender: { name: '라벤더',   price: 100 }
+  lavender: { name: '라벤더',   price: 100 },
+  mint:     { name: '민트',     price: 100 },
+  beige:    { name: '베이지',   price: 100 },
+  white2:   { name: '모노',     price: 100 },
+  lemon:    { name: '레몬',     price: 100 }
 };
 
 function getCoin(uid) {
@@ -1990,14 +2126,11 @@ function setUserSkin(uid, s) { STORE['skin_' + uid] = s; saveState(); }
 
 function currentSkin() {
   const cl = document.body.classList;
-  return cl.contains('pika') ? 'pika'
-    : cl.contains('rija') ? 'rija'
-    : cl.contains('blue') ? 'blue'
-    : cl.contains('lavender') ? 'lavender'
-    : cl.contains('dark') ? 'dark' : 'light';
+  const found = ['pika', 'rija', 'blue', 'lavender', 'mint', 'beige', 'white2', 'lemon', 'dark'].find(c => cl.contains(c));
+  return found || 'light';
 }
 function applySkinClass(theme) {
-  document.body.classList.remove('dark', 'pika', 'rija', 'blue', 'lavender');
+  document.body.classList.remove('dark', 'pika', 'rija', 'blue', 'lavender', 'mint', 'beige', 'white2', 'lemon');
   if (theme !== 'light') document.body.classList.add(theme);
 }
 function updateCoinDisplay() {
@@ -2141,7 +2274,7 @@ function renderRankAdmin() {
       <td style="color:#868e96;font-size:12px;white-space:nowrap">${i + 1}위</td>
       <td style="white-space:nowrap">${esc(name)} ${u ? `<span class="class-badge">${badgeLabel(u)}</span>` : ''}</td>
       <td style="color:#adb5bd;font-size:13px;white-space:nowrap">${esc(x.uid)}</td>
-      <td style="text-align:right;white-space:nowrap"><input type="number" min="0" step="0.1" class="gold-input" style="width:90px" value="${x.score}" data-uid="${esc(x.uid)}" onchange="setRankScore(this)"> 초</td>
+      <td style="text-align:right;white-space:nowrap;font-weight:600">${x.score.toFixed(1)} 초</td>
       <td style="text-align:right;white-space:nowrap"><button class="btn-pw-reset" onclick="deleteRankUser('${esc(x.uid)}')">기록 삭제</button></td>
     </tr>`;
   });
@@ -2155,20 +2288,6 @@ function renderRankAdmin() {
       <th></th>
     </tr></thead>
     <tbody>${rowsHtml}</tbody></table></div></div>`;
-}
-function setRankScore(el) {
-  const uid = el.dataset.uid;
-  const v = Math.max(0, Math.round((parseFloat(el.value) || 0) * 10) / 10);
-  const s = getScores();
-  let bestRec = null;
-  s.forEach(x => { if (x.uid === uid && (!bestRec || x.score > bestRec.score)) bestRec = x; });
-  if (bestRec) {
-    // 수정한 값이 확실한 최고 기록이 되도록, 해당 사용자의 다른 기록도 새 값 이하로 맞춤
-    s.forEach(x => { if (x.uid === uid && x.score > v) x.score = v; });
-    bestRec.score = v;
-    setScores(s);
-  }
-  renderRankAdmin();
 }
 function deleteRankUser(uid) {
   const u = USERS[uid];
