@@ -61,6 +61,11 @@
   .topbar-title { font-size: 16px; font-weight: 700; color: var(--primary); white-space: nowrap; flex-shrink: 0; }
   .topbar-user  { display: flex; align-items: center; gap: 10px; font-size: 14px; color: var(--gray); flex-shrink: 0; white-space: nowrap; }
   .topbar-left { display: flex; align-items: center; gap: 10px; height: 100%; flex-shrink: 0; }
+  .topbar-cheer { flex: 1 1 auto; min-width: 0; text-align: center; font-size: 14px; color: var(--gray); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding: 0 10px; }
+  .topbar-cheer .cheer-name { color: var(--primary); font-weight: 600; }
+  .cheer-editor { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .cheer-editor .search-input { flex: 1; min-width: 180px; }
+  .cheer-count { font-size: 12px; color: var(--gray); white-space: nowrap; }
   .skin-mascot { display: none; height: 56px; width: auto; object-fit: contain; pointer-events: none; }
   body.pika .mascot-pika { display: inline-block; }
   body.rija .mascot-rija { display: inline-block; }
@@ -753,6 +758,7 @@
       <img class="skin-mascot mascot-white2" src="gana1.png" alt="">
       <img class="skin-mascot mascot-lemon" src="tama1.png" alt="">
     </div>
+    <div class="topbar-cheer" id="topbar-cheer" style="display:none"></div>
     <div class="topbar-user">
       <span id="st-username"></span>
       <span class="coin-display">🪙 <span class="coin-amt">0</span>G</span>
@@ -776,6 +782,15 @@
       <div class="save-row">
         <button class="btn-save" onclick="saveData()">저장하기</button>
         <span class="save-msg" id="save-msg">✓ 저장되었습니다</span>
+      </div>
+    </div>
+    <div class="card" style="margin-top:14px;">
+      <div class="card-title">💌 응원하기 <span style="font-size:12px;font-weight:400;color:var(--gray)">— 20자 이내로 남기면 상단 제목바에 랜덤으로 표시돼요</span></div>
+      <div class="cheer-editor">
+        <input class="search-input" id="cheer-input" maxlength="20" placeholder="예) 모두 원하는 대학 합격 기원!" oninput="updateCheerCounts()" onkeydown="if(event.key==='Enter')saveCheerFrom('cheer-input','cheer-msg')">
+        <span class="cheer-count"><b id="cheer-count">0</b>/20</span>
+        <button class="btn-save" style="padding:9px 20px;margin:0;" onclick="saveCheerFrom('cheer-input','cheer-msg')">저장</button>
+        <span class="save-msg" id="cheer-msg">✓ 저장되었습니다</span>
       </div>
     </div>
     <div class="card" style="margin-top:14px;">
@@ -804,6 +819,7 @@
       <img class="skin-mascot mascot-white2" src="gana1.png" alt="">
       <img class="skin-mascot mascot-lemon" src="tama1.png" alt="">
     </div>
+    <div class="topbar-cheer" id="topbar-cheer-admin" style="display:none"></div>
     <div class="topbar-user">
       <span id="admin-username">관리자</span>
       <span class="coin-display">🪙 <span class="coin-amt">0</span>G</span>
@@ -838,9 +854,12 @@
         <button class="sidebar-btn col-btn"        id="col-recommend" onclick="selectCollect('recommend')">추천전형</button>
       </div>
       <div class="sidebar-divider"></div>
+      <button class="sidebar-btn nav-btn" id="nav-cheer" onclick="selectView('cheer')">💌 응원하기</button>
+      <div class="sidebar-divider"></div>
       <button class="sidebar-btn nav-btn" id="nav-teacher" onclick="selectView('teacher')">👩‍🏫 교사 설정</button>
       <button class="sidebar-btn nav-btn" id="nav-gold" onclick="selectView('gold')">🪙 골드 및 스킨</button>
       <button class="sidebar-btn nav-btn" id="nav-rank" onclick="selectView('rank')">🏆 랭킹 관리</button>
+      <button class="sidebar-btn nav-btn" id="nav-cheeradmin" onclick="selectView('cheeradmin')">💌 응원 관리</button>
       <button class="sidebar-btn nav-btn" id="nav-pwreset" onclick="selectView('pwreset')">🔑 비밀번호 관리</button>
     </div>
 
@@ -939,6 +958,30 @@
           <div style="font-size:12px;color:var(--gray);margin-top:4px;">피카피카썬더! 랭킹의 사용자별 최고 기록(초)을 직접 수정하거나, 기록을 삭제해 랭킹에서 제외합니다.</div>
         </div>
         <div id="rank-admin-list"></div>
+      </div>
+
+      <!-- VIEW: 응원하기 (본인 메시지 작성) -->
+      <div id="view-cheer" style="display:none">
+        <div class="card" style="padding:18px 20px;">
+          <div class="card-title">💌 응원하기 <span style="font-size:12px;font-weight:400;color:var(--gray)">— 20자 이내로 남기면 상단 제목바에 랜덤으로 표시돼요</span></div>
+          <div class="cheer-editor">
+            <input class="search-input" id="cheer-input-t" maxlength="20" placeholder="예) 우리 반 모두 파이팅!" oninput="updateCheerCounts()" onkeydown="if(event.key==='Enter')saveCheerFrom('cheer-input-t','cheer-msg-t')">
+            <span class="cheer-count"><b id="cheer-count-t">0</b>/20</span>
+            <button class="btn-save" style="padding:9px 20px;margin:0;" onclick="saveCheerFrom('cheer-input-t','cheer-msg-t')">저장</button>
+            <span class="save-msg" id="cheer-msg-t">✓ 저장되었습니다</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- VIEW: 응원 관리 (관리자) -->
+      <div id="view-cheeradmin" style="display:none">
+        <div class="card" style="padding:16px 20px;margin-bottom:14px;">
+          <div class="filter-row">
+            <input class="search-input" id="cheer-admin-search" placeholder="🔍 이름/학번/내용 검색..." oninput="renderCheerAdmin()">
+          </div>
+          <div style="font-size:12px;color:var(--gray);margin-top:4px;">학생·교사가 남긴 응원 메시지를 수정하거나 삭제합니다.</div>
+        </div>
+        <div id="cheer-admin-list"></div>
       </div>
 
       <!-- VIEW: 비밀번호 초기화 -->
@@ -1165,14 +1208,18 @@ window.applyState = function (data) {
   if (data && typeof data === 'object') {
     if (!writePending) {
       const localScores = STORE['mb_scores'];
+      const localCheers = STORE['cheers'];
       STORE = data;
       STORE['mb_scores'] = mergeScores(localScores, data['mb_scores']);   // 점수는 합쳐서 보존(덮어써서 사라지는 것 방지)
+      STORE['cheers'] = mergeCheers(localCheers, data['cheers']);          // 응원 메시지도 합쳐서 보존
       try { localStorage.setItem('susi_state', JSON.stringify(STORE)); } catch {}
     } else {
-      // 저장 대기 중: 다른 데이터는 서버본으로 덮지 않되, 서버에 새로 생긴 점수는 합쳐 보존
+      // 저장 대기 중: 다른 데이터는 서버본으로 덮지 않되, 서버에 새로 생긴 점수·응원은 합쳐 보존
       STORE['mb_scores'] = mergeScores(STORE['mb_scores'], data['mb_scores']);
+      STORE['cheers'] = mergeCheers(STORE['cheers'], data['cheers']);
       try { localStorage.setItem('susi_state', JSON.stringify(STORE)); } catch {}
     }
+    try { renderCheerRoll(); syncCheerInputs(); } catch (e) {}
   }
   fbReady = true;
   rebuildUsers();
@@ -1300,6 +1347,8 @@ function enterSession(id) {
     document.getElementById('student-page').classList.add('active');
     loadStudentData();
   }
+  syncCheerInputs();
+  startCheerRoll();
 }
 
 // 새로고침 시 세션 복원 (데이터 준비 후 1회)
@@ -1329,6 +1378,8 @@ function applyRolePerms() {
   document.getElementById('nav-rank').style.display = isAdmin ? 'block' : 'none';
   document.getElementById('nav-gold').style.display = (isAdmin || (isTeacher && u.goldPerm)) ? 'block' : 'none';
   document.getElementById('nav-pwreset').style.display = (isAdmin || (isTeacher && u.pwPerm)) ? 'block' : 'none';
+  document.getElementById('nav-cheer').style.display = (isAdmin || isTeacher) ? 'block' : 'none';
+  document.getElementById('nav-cheeradmin').style.display = isAdmin ? 'block' : 'none';
 }
 
 ['login-id','login-pw'].forEach((id, i) => {
@@ -1340,6 +1391,7 @@ function applyRolePerms() {
 function doLogout() {
   currentUser = null;
   try { sessionStorage.removeItem('session_uid'); } catch (e) {}
+  stopCheerRoll();
   adminRows = {};
   applySkinClass('light');
   closePwModal();
@@ -1467,6 +1519,8 @@ function selectView(v) {
   document.getElementById('view-teacher').style.display = v === 'teacher' ? 'block' : 'none';
   document.getElementById('view-gold').style.display    = v === 'gold'    ? 'block' : 'none';
   document.getElementById('view-rank').style.display    = v === 'rank'    ? 'block' : 'none';
+  document.getElementById('view-cheer').style.display      = v === 'cheer'      ? 'block' : 'none';
+  document.getElementById('view-cheeradmin').style.display = v === 'cheeradmin' ? 'block' : 'none';
   document.getElementById('view-pwreset').style.display = v === 'pwreset' ? 'block' : 'none';
   document.getElementById('class-submenu').classList.toggle('open', v === 'status');
   document.getElementById('collect-submenu').classList.toggle('open', v === 'collect');
@@ -1507,6 +1561,8 @@ function refreshAdmin() {
   else if (currentView === 'teacher') renderTeachers();
   else if (currentView === 'gold') renderGold();
   else if (currentView === 'rank') renderRankAdmin();
+  else if (currentView === 'cheer') syncCheerInputs();
+  else if (currentView === 'cheeradmin') renderCheerAdmin();
   else renderPwReset();
 }
 
@@ -2413,6 +2469,113 @@ function editRankScore(uid, ts) {
   list.forEach(r => { if (r.uid === uid && r.score > nv) { r.score = nv; r.edited = now; } });
   setScores(list);
   renderRankAdmin();
+}
+
+// ── 응원하기 (cheers) ──
+const CHEER_MAX = 20;
+function getCheers() { const v = STORE['cheers']; return (v && typeof v === 'object' && !Array.isArray(v)) ? v : {}; }
+function mergeCheers(a, b) {
+  const out = {};
+  const put = obj => { if (obj && typeof obj === 'object') for (const k in obj) { const r = obj[k]; if (!r) continue; if (!out[k] || (r.ts || 0) >= (out[k].ts || 0)) out[k] = r; } };
+  put(a); put(b);
+  return out;
+}
+function activeCheers() { return Object.values(getCheers()).filter(c => c && !c.deleted && c.text && c.text.trim()); }
+function saveMyCheer(text) {
+  if (!currentUser) return;
+  const t = (text || '').trim().slice(0, CHEER_MAX);
+  const c = { ...getCheers() };
+  c[currentUser.id] = t
+    ? { uid: currentUser.id, name: currentUser.name, text: t, ts: Date.now() }
+    : { uid: currentUser.id, name: currentUser.name, text: '', deleted: true, ts: Date.now() };
+  STORE['cheers'] = c; saveState();
+}
+function updateCheerCounts() {
+  [['cheer-input','cheer-count'],['cheer-input-t','cheer-count-t']].forEach(([i, c]) => {
+    const el = document.getElementById(i), cn = document.getElementById(c);
+    if (el && cn) cn.textContent = el.value.length;
+  });
+}
+function syncCheerInputs() {
+  const my = currentUser ? getCheers()[currentUser.id] : null;
+  const val = (my && !my.deleted && my.text) ? my.text : '';
+  ['cheer-input','cheer-input-t'].forEach(id => { const el = document.getElementById(id); if (el && document.activeElement !== el) el.value = val; });
+  updateCheerCounts();
+}
+function saveCheerFrom(inputId, msgId) {
+  const input = document.getElementById(inputId);
+  if (!input) return;
+  saveMyCheer(input.value);
+  const msg = document.getElementById(msgId);
+  if (msg) { msg.classList.add('show'); setTimeout(() => msg.classList.remove('show'), 2000); }
+  syncCheerInputs();
+  renderCheerRoll();
+}
+// 제목바 응원 롤 (5초마다 랜덤)
+let cheerRollTimer = null;
+function renderCheerRoll() {
+  const list = activeCheers();
+  document.querySelectorAll('.topbar-cheer').forEach(el => {
+    if (!list.length) { el.style.display = 'none'; el.innerHTML = ''; return; }
+    const c = list[Math.floor(Math.random() * list.length)];
+    el.style.display = '';
+    el.innerHTML = `💌 ${esc(c.text)} <span class="cheer-name">— ${esc(c.name)}</span>`;
+  });
+}
+function startCheerRoll() {
+  renderCheerRoll();
+  if (cheerRollTimer) clearInterval(cheerRollTimer);
+  cheerRollTimer = setInterval(renderCheerRoll, 5000);
+}
+function stopCheerRoll() {
+  if (cheerRollTimer) { clearInterval(cheerRollTimer); cheerRollTimer = null; }
+  document.querySelectorAll('.topbar-cheer').forEach(el => { el.style.display = 'none'; el.innerHTML = ''; });
+}
+// 관리자: 응원 관리 (수정/삭제)
+function renderCheerAdmin() {
+  const list = document.getElementById('cheer-admin-list');
+  if (!list) return;
+  const search = (document.getElementById('cheer-admin-search') ? document.getElementById('cheer-admin-search').value : '').trim().toLowerCase();
+  const arr = activeCheers().sort((a, b) => (b.ts || 0) - (a.ts || 0));
+  let rows = '';
+  arr.forEach(c => {
+    const u = USERS[c.uid];
+    const name = u ? u.name : c.name;
+    if (search && !String(name).toLowerCase().includes(search) && !String(c.uid).includes(search) && !c.text.toLowerCase().includes(search)) return;
+    rows += `<tr>
+      <td style="white-space:nowrap">${esc(name)} ${u ? `<span class="class-badge">${badgeLabel(u)}</span>` : ''}</td>
+      <td style="color:#adb5bd;font-size:13px;white-space:nowrap">${esc(String(c.uid))}</td>
+      <td>${esc(c.text)}</td>
+      <td style="text-align:right;white-space:nowrap">
+        <button class="btn-pw-reset" onclick="editCheer('${esc(String(c.uid))}')">수정</button>
+        <button class="btn-pw-reset" style="margin-left:6px" onclick="deleteCheer('${esc(String(c.uid))}')">삭제</button>
+      </td></tr>`;
+  });
+  if (!rows) { list.innerHTML = '<div class="no-data" style="padding:24px;background:#fff;border-radius:10px">등록된 응원 메시지가 없습니다.</div>'; return; }
+  list.innerHTML = `<div class="card" style="padding:8px 12px;"><div class="table-wrap"><table class="pwreset-table" style="width:100%;">
+    <thead><tr><th>이름</th><th style="width:110px">학번/아이디</th><th>응원 메시지</th><th style="width:120px"></th></tr></thead>
+    <tbody>${rows}</tbody></table></div></div>`;
+}
+function editCheer(uid) {
+  const c = getCheers()[uid];
+  if (!c) { renderCheerAdmin(); return; }
+  const input = prompt('응원 메시지 수정 (20자 이내)', c.text || '');
+  if (input === null) return;
+  const t = input.trim().slice(0, CHEER_MAX);
+  const all = { ...getCheers() };
+  all[uid] = { ...c, text: t, deleted: t ? undefined : true, ts: Date.now() };
+  STORE['cheers'] = all; saveState();
+  renderCheerAdmin(); renderCheerRoll();
+}
+function deleteCheer(uid) {
+  const c = getCheers()[uid];
+  if (!c) return;
+  const u = USERS[uid]; const nm = u ? u.name : (c.name || uid);
+  if (!confirm(`${nm} 님의 응원 메시지를 삭제할까요?`)) return;
+  const all = { ...getCheers() };
+  all[uid] = { ...c, text: '', deleted: true, ts: Date.now() };
+  STORE['cheers'] = all; saveState();
+  renderCheerAdmin(); renderCheerRoll();
 }
 
 function openRankModal() {
