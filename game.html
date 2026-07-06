@@ -546,7 +546,6 @@
   let running = false;
   let startTime = 0;
   let elapsed = 0;
-  let hiddenAt = 0;   // 탭이 숨겨진 시각 (숨겨진 동안 시간 멈춤용)
   let spawnTimer = 0;
   let best = 0;
 
@@ -823,21 +822,9 @@
   }
 
   // ---------- main loop ----------
-  // 탭이 숨겨지면 시간을 멈춘다 (숨긴 동안 흐른 시간을 startTime에서 제외)
-  document.addEventListener('visibilitychange', () => {
-    if (document.hidden) {
-      hiddenAt = performance.now();
-    } else if (hiddenAt) {
-      const gap = performance.now() - hiddenAt;
-      startTime += gap;   // 숨겨진 동안의 시간은 카운트하지 않음
-      last += gap;        // 재개 시 dt 급증 방지
-      hiddenAt = 0;
-    }
-  });
-
   let last = performance.now();
   function loop(now) {
-    // 탭이 숨겨진 동안엔 갱신/그리기 중단 (시간·이동·충돌 모두 멈춤)
+    // 숨겨진 동안엔 갱신/그리기 중단 (시간·이동·충돌 모두 멈춤) — last를 맞춰 복귀 시 dt 급증 방지
     if (document.hidden) { last = now; requestAnimationFrame(loop); return; }
     const dt = Math.min((now - last) / 16.667, 3);
     last = now;
@@ -846,7 +833,8 @@
     drawBackground();
 
     if (running) {
-      elapsed = (now - startTime) / 1000;
+      // 벽시계 대신 실제 그려진 프레임(dt) 누적 → 백그라운드/잠금 시 시간 멈춤(모든 기기)
+      elapsed += (dt * 16.667) / 1000;
 
       // movement
       const movL = isMovingLeft();
