@@ -1162,9 +1162,17 @@ function isEditingActive() {
   return (window.__lastEditTs && (Date.now() - window.__lastEditTs) < 6000);
 }
 window.applyState = function (data) {
-  if (data && typeof data === 'object' && !writePending) {   // 저장 대기 중이면 서버본으로 덮지 않음
-    STORE = data;
-    try { localStorage.setItem('susi_state', JSON.stringify(STORE)); } catch {}
+  if (data && typeof data === 'object') {
+    if (!writePending) {
+      const localScores = STORE['mb_scores'];
+      STORE = data;
+      STORE['mb_scores'] = mergeScores(localScores, data['mb_scores']);   // 점수는 합쳐서 보존(덮어써서 사라지는 것 방지)
+      try { localStorage.setItem('susi_state', JSON.stringify(STORE)); } catch {}
+    } else {
+      // 저장 대기 중: 다른 데이터는 서버본으로 덮지 않되, 서버에 새로 생긴 점수는 합쳐 보존
+      STORE['mb_scores'] = mergeScores(STORE['mb_scores'], data['mb_scores']);
+      try { localStorage.setItem('susi_state', JSON.stringify(STORE)); } catch {}
+    }
   }
   fbReady = true;
   rebuildUsers();
@@ -2299,16 +2307,39 @@ window.addEventListener('message', (e) => {
 // 랭킹 (역대 / 주간, 사용자별 최고기록)
 function getScores() { const v = STORE['mb_scores']; return Array.isArray(v) ? v : []; }
 function setScores(a) { STORE['mb_scores'] = a; saveState(); }
+// 점수 목록 합치기 — 동시 사용 시 서버본이 로컬 기록을 덮어써 사라지는 것 방지
+// 같은 기록(uid+ts) 충돌 시: 관리자 수정(edited) 최신이 우선, 없으면 삭제표시 유지 + 더 낮은 점수
+function mergeScores(a, b) {
+  const map = new Map();
+  const put = r => {
+    if (!r || r.uid == null || r.ts == null) return;
+    const k = r.uid + '|' + r.ts;
+    const ex = map.get(k);
+    if (!ex) { map.set(k, r); return; }
+    const ee = ex.edited || 0, re = r.edited || 0;
+    if (ee !== re) { map.set(k, ee > re ? ex : r); return; }   // 최근 관리자 조치 우선
+    map.set(k, { ...ex, ...r, score: Math.min(ex.score, r.score), deleted: ex.deleted || r.deleted || undefined });
+  };
+  (Array.isArray(a) ? a : []).forEach(put);
+  (Array.isArray(b) ? b : []).forEach(put);
+  let arr = [...map.values()];
+  const CAP = 5000;
+  if (arr.length > CAP) {
+    const dead = arr.filter(r => r.deleted);
+    const live = arr.filter(r => !r.deleted).sort((x, y) => y.ts - x.ts).slice(0, CAP);
+    arr = [...live, ...dead];
+  }
+  return arr;
+}
 function recordScore(uid, name, score) {
   if (USERS[uid] && USERS[uid].role === 'admin') return;   // 관리자는 랭킹 제외
   const s = getScores();
   s.push({ uid, name, score: Math.round(score * 10) / 10, ts: Date.now() });
-  if (s.length > 1000) s.splice(0, s.length - 1000);
   setScores(s);
 }
 function bestPerUser(list) {
   const m = {};
-  list.forEach(x => {
+  list.filter(x => !x.deleted).forEach(x => {   // 삭제표시된 기록은 제외
     const cur = m[x.uid];
     if (!cur || x.score > cur.score || (x.score === cur.score && x.ts < cur.ts)) m[x.uid] = x;
   });
@@ -2359,7 +2390,9 @@ function deleteRankUser(uid) {
   const u = USERS[uid];
   const nm = u ? u.name : uid;
   if (!confirm(`${nm} 님의 게임 기록을 모두 삭제할까요?\n랭킹에서 제외되며 되돌릴 수 없습니다.`)) return;
-  setScores(getScores().filter(x => x.uid !== uid));
+  const now = Date.now();
+  // 실제 제거 대신 삭제표시(tombstone) — 동기화 시 다른 기기에서 되살아나는 것 방지
+  setScores(getScores().map(x => x.uid === uid ? { ...x, deleted: true, edited: now } : x));
   renderRankAdmin();
 }
 // 최고 기록 수정 — 입력한 값이 해당 학생의 최고 기록이 되도록 설정
@@ -2374,9 +2407,10 @@ function editRankScore(uid, ts) {
   const v = parseFloat(String(input).replace(',', '.'));
   if (isNaN(v) || v < 0) { alert('0 이상의 숫자를 입력하세요.'); return; }
   const nv = Math.round(v * 10) / 10;
-  rec.score = nv;
-  // 입력값이 최고가 되도록, 같은 학생의 더 높은 기록은 이 값으로 낮춤
-  list.forEach(r => { if (r.uid === uid && r.score > nv) r.score = nv; });
+  const now = Date.now();
+  rec.score = nv; rec.edited = now;
+  // 입력값이 최고가 되도록, 같은 학생의 더 높은 기록은 이 값으로 낮춤 (모두 수정시각 기록)
+  list.forEach(r => { if (r.uid === uid && r.score > nv) { r.score = nv; r.edited = now; } });
   setScores(list);
   renderRankAdmin();
 }
