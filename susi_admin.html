@@ -1152,6 +1152,14 @@ function saveState() {
   }
 }
 window.__writeDone = function () { writePending = false; };
+// 편집 중인지 판단 — 동기화 스냅샷이 편집 화면을 갈아엎어 '닫히는' 문제 방지
+function isEditingActive() {
+  const el = document.activeElement;
+  if (el && (el.classList.contains('cell-input') || el.classList.contains('cell-check'))) {
+    if (el.closest('.student-detail') || el.closest('#apps-list')) return true;
+  }
+  return (window.__lastEditTs && (Date.now() - window.__lastEditTs) < 6000);
+}
 window.applyState = function (data) {
   if (data && typeof data === 'object' && !writePending) {   // 저장 대기 중이면 서버본으로 덮지 않음
     STORE = data;
@@ -1163,7 +1171,8 @@ window.applyState = function (data) {
   if (st && st.dataset.loading) { st.textContent = ''; delete st.dataset.loading; }
   try { tryRestoreSession(); } catch (e) {}
   if (currentUser && (currentUser.role === 'admin' || currentUser.role === 'teacher')) {
-    try { refreshAdmin(); } catch (e) {}
+    // 편집 중이면 재렌더를 건너뛴다 (열린 편집 패널이 닫히는 것 방지)
+    if (!isEditingActive()) { try { refreshAdmin(); } catch (e) {} }
   }
 };
 // Firebase가 4초 내 응답 없으면 로컬 캐시로라도 진행
@@ -1388,6 +1397,7 @@ function setEntryLayout(mode) {
 function renderRows() {
   document.getElementById('apps-list').innerHTML = buildEntriesHtml(rows, 's');
   markLayoutBtns();
+  colorAllJudgeRows(document.getElementById('apps-list'));
 }
 
 function addRow() {
@@ -1568,6 +1578,7 @@ function renderAdmin() {
     list.innerHTML = '<div class="no-data" style="padding:24px;background:#fff;border-radius:10px">검색 결과가 없습니다.</div>';
   }
   markLayoutBtns();
+  colorAllJudgeRows(list);
 }
 
 function toggleRow(header) { header.closest('.student-row').classList.toggle('open'); }
@@ -1714,7 +1725,7 @@ function buildReadonly(uid) {
 
 function reRenderDetail(uid) {
   const d = document.getElementById('detail-' + uid);
-  if (d) d.innerHTML = buildEditor(uid);
+  if (d) { d.innerHTML = buildEditor(uid); colorAllJudgeRows(d); }
 }
 
 function adminAddRow(uid) { getEditRows(uid).push({}); reRenderDetail(uid); }
@@ -2003,6 +2014,26 @@ function esc(s) {
   return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
 
+// ── 판단(judge) 값별 색상 — 해당 학교 행 전체(학교명~판단) 배경 ──
+const JUDGE_COLORS = { '상향': '#F26C4F', '소신': '#F9AD81', '적정': '#FFF799', '안정': '#A3D39C', '하향': '#3CB878' };
+// 색칠 대상 칸: 학교명부터 판단까지 (기타 의견·추천전형 제외)
+const JUDGE_COLOR_KEYS = new Set(FIELDS.slice(0, FIELDS.findIndex(f => f.key === 'judge') + 1).map(f => f.key));
+function setCellColor(el, c) {
+  el.style.backgroundColor = c || '';
+  el.style.color = c ? '#333' : '';   // 글자색은 항상 검은색
+}
+function applyJudgeRowColor(judgeEl) {
+  const c = JUDGE_COLORS[judgeEl.value] || '';
+  const cont = judgeEl.closest('.entry-card') || judgeEl.closest('tr');
+  if (!cont) { setCellColor(judgeEl, c); return; }
+  cont.querySelectorAll('.cell-input').forEach(el => {
+    if (JUDGE_COLOR_KEYS.has(el.dataset.key)) setCellColor(el, c);
+  });
+}
+function colorAllJudgeRows(scope) {
+  (scope || document).querySelectorAll('[data-key="judge"]').forEach(applyJudgeRowColor);
+}
+
 // ── CELL RENDERING (text / date / dropdown) ──
 function renderCell(f, value, attrs) {
   const v = value || '';
@@ -2069,10 +2100,12 @@ function ensureDatalist(f) {
 }
 
 function cellChange(el) {
+  window.__lastEditTs = Date.now();   // 편집 중 표시 (동기화 재렌더 차단용)
   const d = el.dataset, key = d.key, i = +d.i;
   const val = el.type === 'checkbox' ? el.checked : el.value;
   if (d.ctx === 's') rows[i][key] = val;
   else adminRows[d.uid][i][key] = val;
+  if (key === 'judge') applyJudgeRowColor(el);
 }
 
 // 전형유형 '직접 입력…' 선택 시 값 입력받아 옵션 추가
