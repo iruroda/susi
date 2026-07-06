@@ -1154,6 +1154,7 @@ function saveState() {
 window.__writeDone = function () { writePending = false; };
 // 편집 중인지 판단 — 동기화 스냅샷이 편집 화면을 갈아엎어 '닫히는' 문제 방지
 function isEditingActive() {
+  if (typeof editingTeacherId !== 'undefined' && editingTeacherId) return true;   // 교사 행 편집 중
   const el = document.activeElement;
   if (el && (el.classList.contains('cell-input') || el.classList.contains('cell-check'))) {
     if (el.closest('.student-detail') || el.closest('#apps-list')) return true;
@@ -1842,24 +1843,33 @@ function createTeacher() {
   renderTeachers();
 }
 
-function editTeacher(id) {
+let editingTeacherId = null;
+function editTeacher(id) { editingTeacherId = id; renderTeachers(); }
+function cancelEditTeacher() { editingTeacherId = null; renderTeachers(); }
+function saveTeacherRow(id) {
   const teachers = getTeachers();
   const t = teachers.find(x => x.id === id);
-  if (!t) return;
-  const newName = (prompt('교사 이름', t.name) || '').trim();
-  if (!newName) return;
-  const newId = (prompt('교사 아이디', t.id) || '').trim();
-  if (!newId) return;
+  if (!t) { editingTeacherId = null; renderTeachers(); return; }
+  const name    = (document.getElementById('et-name-' + id).value || '').trim();
+  const newId   = (document.getElementById('et-id-' + id).value || '').trim();
+  const clsVal  = document.getElementById('et-cls-' + id).value;
+  const goldPerm = document.getElementById('et-gold-' + id).checked;
+  const pwPerm   = document.getElementById('et-pw-' + id).checked;
+  if (!name || !newId) { alert('이름과 아이디를 입력하세요.'); return; }
   if (newId !== id && USERS[newId]) { alert('이미 존재하는 아이디입니다.'); return; }
-  t.name = newName;
+  t.name = name;
+  t.tcls = clsVal === 'head' ? 'head' : parseInt(clsVal);
+  t.goldPerm = goldPerm;
+  t.pwPerm = pwPerm;
   if (newId !== id) {
-    ['pw_', 'coin_', 'owned_', 'skin_'].forEach(pre => {
+    ['pw_', 'coin_', 'owned_', 'skin_', 'layout_'].forEach(pre => {
       if (STORE[pre + id] !== undefined) { STORE[pre + newId] = STORE[pre + id]; delete STORE[pre + id]; }
     });
     t.id = newId;
   }
   setTeachers(teachers);
   rebuildUsers();
+  editingTeacherId = null;
   renderTeachers();
 }
 
@@ -1884,13 +1894,32 @@ function renderTeachers() {
     return a.name.localeCompare(b.name, 'ko');
   });
   if (teachers.length === 0) { list.innerHTML = '<div class="no-data" style="padding:24px;background:#fff;border-radius:10px">등록된 교사가 없습니다.</div>'; return; }
-  const rows = teachers.map(t => `<tr>
+  const clsOptions = t => ['head',1,2,3,4,5,6,7,8,9,10].map(c =>
+    `<option value="${c}" ${t.tcls === c ? 'selected' : ''}>${c === 'head' ? '부장' : c + '반'}</option>`).join('');
+  const rows = teachers.map(t => {
+    if (t.id === editingTeacherId) {
+      return `<tr>
+        <td style="white-space:nowrap">
+          <input class="cell-input" id="et-name-${esc(t.id)}" value="${esc(t.name)}" style="width:84px;display:inline-block">
+          <select class="cell-input" id="et-cls-${esc(t.id)}" style="width:68px;display:inline-block;margin-left:4px">${clsOptions(t)}</select>
+        </td>
+        <td><input class="cell-input" id="et-id-${esc(t.id)}" value="${esc(t.id)}" style="width:108px"></td>
+        <td style="text-align:center"><input type="checkbox" id="et-gold-${esc(t.id)}" ${t.goldPerm ? 'checked' : ''}></td>
+        <td style="text-align:center"><input type="checkbox" id="et-pw-${esc(t.id)}" ${t.pwPerm ? 'checked' : ''}></td>
+        <td style="text-align:right;white-space:nowrap">
+          <button class="btn-pw-reset" onclick="saveTeacherRow('${esc(t.id)}')">저장</button>
+          <button class="btn-pw-reset" style="margin-left:6px" onclick="cancelEditTeacher()">취소</button>
+        </td>
+      </tr>`;
+    }
+    return `<tr>
     <td>${esc(t.name)} <span class="class-badge">${t.tcls === 'head' ? '부장' : t.tcls + '반'}</span></td>
     <td style="color:#adb5bd;font-size:13px">${esc(t.id)}</td>
     <td style="text-align:center">${t.goldPerm ? '✓' : '−'}</td>
     <td style="text-align:center">${t.pwPerm ? '✓' : '−'}</td>
     <td style="text-align:right;white-space:nowrap"><button class="btn-pw-reset" onclick="editTeacher('${esc(t.id)}')">수정</button> <button class="btn-pw-reset" onclick="deleteTeacher('${esc(t.id)}')">삭제</button></td>
-  </tr>`).join('');
+  </tr>`;
+  }).join('');
   list.innerHTML = `<div class="card" style="padding:8px 12px;"><table class="pwreset-table">
     <thead><tr>
       <th>이름 / 담당</th>
@@ -2309,7 +2338,10 @@ function renderRankAdmin() {
       <td style="white-space:nowrap">${esc(name)} ${u ? `<span class="class-badge">${badgeLabel(u)}</span>` : ''}</td>
       <td style="color:#adb5bd;font-size:13px;white-space:nowrap">${esc(x.uid)}</td>
       <td style="text-align:right;white-space:nowrap;font-weight:600">${x.score.toFixed(1)} 초</td>
-      <td style="text-align:right;white-space:nowrap"><button class="btn-pw-reset" onclick="deleteRankUser('${esc(x.uid)}')">기록 삭제</button></td>
+      <td style="text-align:right;white-space:nowrap">
+        <button class="btn-pw-reset" onclick="editRankScore('${esc(x.uid)}',${x.ts})">수정</button>
+        <button class="btn-pw-reset" style="margin-left:6px" onclick="deleteRankUser('${esc(x.uid)}')">기록 삭제</button>
+      </td>
     </tr>`;
   });
   if (rowsHtml === '') { list.innerHTML = '<div class="no-data" style="padding:24px;background:#fff;border-radius:10px">랭킹 기록이 없습니다.</div>'; return; }
@@ -2328,6 +2360,24 @@ function deleteRankUser(uid) {
   const nm = u ? u.name : uid;
   if (!confirm(`${nm} 님의 게임 기록을 모두 삭제할까요?\n랭킹에서 제외되며 되돌릴 수 없습니다.`)) return;
   setScores(getScores().filter(x => x.uid !== uid));
+  renderRankAdmin();
+}
+// 최고 기록 수정 — 입력한 값이 해당 학생의 최고 기록이 되도록 설정
+function editRankScore(uid, ts) {
+  const u = USERS[uid];
+  const nm = u ? u.name : uid;
+  const list = getScores();
+  const rec = list.find(r => r.uid === uid && r.ts === ts);
+  if (!rec) { renderRankAdmin(); return; }
+  const input = prompt(`${nm} 님의 최고 기록(초)을 수정합니다.\n현재: ${rec.score.toFixed(1)}초`, rec.score.toFixed(1));
+  if (input === null) return;
+  const v = parseFloat(String(input).replace(',', '.'));
+  if (isNaN(v) || v < 0) { alert('0 이상의 숫자를 입력하세요.'); return; }
+  const nv = Math.round(v * 10) / 10;
+  rec.score = nv;
+  // 입력값이 최고가 되도록, 같은 학생의 더 높은 기록은 이 값으로 낮춤
+  list.forEach(r => { if (r.uid === uid && r.score > nv) r.score = nv; });
+  setScores(list);
   renderRankAdmin();
 }
 
