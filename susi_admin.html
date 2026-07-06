@@ -1171,8 +1171,9 @@ window.applyState = function (data) {
   if (st && st.dataset.loading) { st.textContent = ''; delete st.dataset.loading; }
   try { tryRestoreSession(); } catch (e) {}
   if (currentUser && (currentUser.role === 'admin' || currentUser.role === 'teacher')) {
-    // 편집 중이면 재렌더를 건너뛴다 (열린 편집 패널이 닫히는 것 방지)
-    if (!isEditingActive()) { try { refreshAdmin(); } catch (e) {} }
+    // 편집 중이거나 학생 패널이 열려 있으면 재렌더를 건너뛴다 (열린 패널이 닫히는 것 방지)
+    const panelOpen = !!document.querySelector('.student-row.open');
+    if (!isEditingActive() && !panelOpen) { try { refreshAdmin(); } catch (e) {} }
   }
 };
 // Firebase가 4초 내 응답 없으면 로컬 캐시로라도 진행
