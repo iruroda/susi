@@ -117,6 +117,12 @@
   .flbl { font-size: 11px; color: var(--gray); font-weight: 600; white-space: nowrap; }
   .entry-card .btn-del { margin-top: 24px; flex-shrink: 0; }
   body.dark .entry-card { background: #20242c; }
+  /* 지원 학교 순서 변경 버튼 */
+  .move-btns { display: inline-flex; flex-direction: column; gap: 2px; flex-shrink: 0; }
+  .entry-card .move-btns { margin-top: 24px; }
+  .btn-move { border: 1px solid var(--border); background: #fff; color: var(--gray); border-radius: 5px; width: 26px; height: 17px; line-height: 1; font-size: 10px; cursor: pointer; padding: 0; }
+  .btn-move:hover:not(:disabled) { border-color: var(--primary); color: var(--primary); }
+  .btn-move:disabled { opacity: .3; cursor: default; }
   .card { background: #fff; border-radius: 12px; padding: 24px; box-shadow: var(--shadow); margin-bottom: 20px; }
   .card-title { font-size: 16px; font-weight: 700; margin-bottom: 20px; display: flex; align-items: center; gap: 8px; }
 
@@ -1411,8 +1417,18 @@ function loadStudentData() {
   renderRows();
 }
 
+// 지원 학교 순서 변경 버튼 (▲/▼) — 학생·교사·관리자 공통
+function moveBtns(ctx, uid, i, n) {
+  const up = ctx === 's' ? `moveRow(${i},-1)` : `adminMoveRow('${uid}',${i},-1)`;
+  const dn = ctx === 's' ? `moveRow(${i},1)`  : `adminMoveRow('${uid}',${i},1)`;
+  return `<div class="move-btns">
+    <button class="btn-move" onclick="${up}" ${i === 0 ? 'disabled' : ''} title="위로">▲</button>
+    <button class="btn-move" onclick="${dn}" ${i === n - 1 ? 'disabled' : ''} title="아래로">▼</button>
+  </div>`;
+}
+
 // 입력 카드 1건 (원서 마감일부터 둘째 줄로 줄바꿈)
-function renderEntry(i, rowObj, ctx, uid) {
+function renderEntry(i, rowObj, ctx, uid, n) {
   const attrs = f => ctx === 's'
     ? `data-ctx="s" data-i="${i}" data-key="${f.key}"`
     : `data-ctx="a" data-uid="${uid}" data-i="${i}" data-key="${f.key}"`;
@@ -1422,6 +1438,7 @@ function renderEntry(i, rowObj, ctx, uid) {
   return `<div class="entry-card">
     <div class="entry-num">${i + 1}</div>
     <div class="entry-body"><div class="entry-line">${cells}</div></div>
+    ${moveBtns(ctx, uid, i, n)}
     <button class="btn-del" onclick="${del}">✕</button>
   </div>`;
 }
@@ -1437,11 +1454,11 @@ function buildEntriesHtml(arr, ctx, uid) {
     const head = `<tr><th>순번</th>${FIELDS.map(f => `<th>${f.label}</th>`).join('')}<th></th></tr>`;
     const body = arr.map((r, i) => {
       const del = ctx === 's' ? `delRow(${i})` : `adminDelRow('${uid}',${i})`;
-      return `<tr><td class="row-num">${i + 1}</td>${FIELDS.map(f => `<td>${renderCell(f, r[f.key], attrs(f, i))}</td>`).join('')}<td><button class="btn-del" onclick="${del}">✕</button></td></tr>`;
+      return `<tr><td class="row-num">${i + 1}</td>${FIELDS.map(f => `<td>${renderCell(f, r[f.key], attrs(f, i))}</td>`).join('')}<td style="white-space:nowrap"><div style="display:flex;align-items:center;gap:6px;justify-content:flex-end">${moveBtns(ctx, uid, i, arr.length)}<button class="btn-del" onclick="${del}">✕</button></div></td></tr>`;
     }).join('');
     return `<div class="table-wrap"><table class="apps-table"><thead>${head}</thead><tbody>${body}</tbody></table></div>`;
   }
-  return arr.map((r, i) => renderEntry(i, r, ctx, uid)).join('');
+  return arr.map((r, i) => renderEntry(i, r, ctx, uid, arr.length)).join('');
 }
 
 function markLayoutBtns() {
@@ -1472,6 +1489,13 @@ function addRow() {
 function delRow(i) {
   if (rows.length <= 1) { rows[0] = {}; renderRows(); return; }
   rows.splice(i, 1); renderRows();
+}
+
+function moveRow(i, dir) {
+  const j = i + dir;
+  if (j < 0 || j >= rows.length) return;
+  [rows[i], rows[j]] = [rows[j], rows[i]];
+  renderRows();
 }
 
 function saveData() {
@@ -1799,6 +1823,14 @@ function adminAddRow(uid) { getEditRows(uid).push({}); reRenderDetail(uid); }
 function adminDelRow(uid, i) {
   const r = getEditRows(uid);
   if (r.length <= 1) r[0] = {}; else r.splice(i, 1);
+  reRenderDetail(uid);
+}
+
+function adminMoveRow(uid, i, dir) {
+  const r = getEditRows(uid);
+  const j = i + dir;
+  if (j < 0 || j >= r.length) return;
+  [r[i], r[j]] = [r[j], r[i]];
   reRenderDetail(uid);
 }
 
