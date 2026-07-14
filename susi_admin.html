@@ -1210,7 +1210,13 @@ function isEditingActive() {
   }
   return (window.__lastEditTs && (Date.now() - window.__lastEditTs) < 6000);
 }
-window.applyState = function (data) {
+// 오프라인 캐시(localStorage) 저장 — 무거우므로 3초에 한 번만 (iPad 멈춤 방지)
+let _cacheTimer = null;
+function cacheStoreSoon() {
+  if (_cacheTimer) return;
+  _cacheTimer = setTimeout(() => { _cacheTimer = null; try { localStorage.setItem('susi_state', JSON.stringify(STORE)); } catch {} }, 3000);
+}
+function applyStateNow(data) {
   if (data && typeof data === 'object') {
     if (!writePending) {
       const localScores = STORE['mb_scores'];
@@ -1218,12 +1224,12 @@ window.applyState = function (data) {
       STORE = data;
       STORE['mb_scores'] = mergeScores(localScores, data['mb_scores']);   // 점수는 합쳐서 보존(덮어써서 사라지는 것 방지)
       STORE['cheers'] = mergeCheers(localCheers, data['cheers']);          // 응원 메시지도 합쳐서 보존
-      try { localStorage.setItem('susi_state', JSON.stringify(STORE)); } catch {}
+      cacheStoreSoon();
     } else {
       // 저장 대기 중: 다른 데이터는 서버본으로 덮지 않되, 서버에 새로 생긴 점수·응원은 합쳐 보존
       STORE['mb_scores'] = mergeScores(STORE['mb_scores'], data['mb_scores']);
       STORE['cheers'] = mergeCheers(STORE['cheers'], data['cheers']);
-      try { localStorage.setItem('susi_state', JSON.stringify(STORE)); } catch {}
+      cacheStoreSoon();
     }
     try { renderCheerRoll(); syncCheerInputs(); } catch (e) {}
   }
@@ -1233,11 +1239,29 @@ window.applyState = function (data) {
   if (st && st.dataset.loading) { st.textContent = ''; delete st.dataset.loading; }
   try { tryRestoreSession(); } catch (e) {}
   if (currentUser && (currentUser.role === 'admin' || currentUser.role === 'teacher')) {
-    // 편집 중이거나 학생 패널이 열려 있으면 재렌더를 건너뛴다 (열린 패널이 닫히는 것 방지)
-    const panelOpen = !!document.querySelector('.student-row.open');
-    if (!isEditingActive() && !panelOpen) { try { refreshAdmin(); } catch (e) {} }
+    scheduleAdminRefresh();   // 잦은 스냅샷마다 전체 재렌더로 iPad가 멈추는(터치 씹힘) 것 방지
   }
+}
+// 스냅샷이 몰려와도 무거운 처리(STORE 저장·병합·렌더)를 최대 0.8초에 한 번으로 묶어 iPad 멈춤 방지
+let _snapData, _snapTimer = null, _lastApply = 0;
+window.applyState = function (data) {
+  _snapData = data;
+  const gap = Date.now() - _lastApply, MIN = 800;
+  if (_snapTimer) return;                       // 이미 예약됨 → 최신 데이터만 반영
+  if (gap >= MIN) { _lastApply = Date.now(); const d = _snapData; _snapData = undefined; applyStateNow(d); }
+  else _snapTimer = setTimeout(() => { _snapTimer = null; _lastApply = Date.now(); const d = _snapData; _snapData = undefined; applyStateNow(d); }, MIN - gap);
 };
+// 스냅샷이 몰려와도 전체 재렌더는 디바운스로 한 번만 — 편집/패널열림/최근 터치 중이면 건너뜀
+let adminRefreshTimer = null;
+function scheduleAdminRefresh() {
+  if (adminRefreshTimer) clearTimeout(adminRefreshTimer);
+  adminRefreshTimer = setTimeout(() => {
+    adminRefreshTimer = null;
+    if (!currentUser || (currentUser.role !== 'admin' && currentUser.role !== 'teacher')) return;
+    if (isEditingActive() || document.querySelector('.student-row.open')) { scheduleAdminRefresh(); return; }  // 아직 상호작용 중이면 뒤로 미룸
+    try { refreshAdmin(); } catch (e) {}
+  }, 1200);
+}
 // Firebase가 4초 내 응답 없으면 로컬 캐시로라도 진행
 setTimeout(() => { if (!fbReady) { fbReady = true; rebuildUsers(); try { tryRestoreSession(); } catch (e) {} } }, 4000);
 
@@ -2639,6 +2663,10 @@ document.addEventListener('keydown', e => {
   if (confirmBg && confirmBg.style.display === 'flex') open.push(confirmBg);
   if (open.length) closeAnyModal(open[open.length - 1]);   // 가장 위(나중에 열린) 팝업만 닫기
 });
+
+// 화면을 만지는 동안(터치/클릭 직후 몇 초)엔 재렌더를 미뤄 터치가 씹히지 않게 함
+['pointerdown', 'touchstart'].forEach(ev =>
+  document.addEventListener(ev, () => { window.__lastEditTs = Date.now(); }, { passive: true, capture: true }));
 
 // 우클릭(컨텍스트 메뉴) 전체 비활성화
 document.addEventListener('contextmenu', function (e) { e.preventDefault(); });
