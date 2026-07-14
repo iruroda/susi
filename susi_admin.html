@@ -922,6 +922,14 @@
 
       <!-- VIEW: 교사 설정 -->
       <div id="view-teacher" style="display:none">
+        <div class="card" style="padding:14px 20px;margin-bottom:14px;border:1px solid #ffd8a8;background:#fff9f0;">
+          <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+            <strong style="font-size:14px;">🔧 데이터 구조 이전(1회)</strong>
+            <button class="btn-save" style="padding:8px 16px;" onclick="migrateFromOld()">기존 데이터 → 새 구조로 이전</button>
+            <span id="mig-status" style="font-size:13px;color:var(--gray);"></span>
+          </div>
+          <div style="font-size:12px;color:var(--gray);margin-top:6px;">최초 1회만 실행하세요. 기존 <code>state/all</code> 문서를 학생별 문서와 공유 문서로 복사합니다(기존 문서는 백업으로 남습니다).</div>
+        </div>
         <div class="card" style="padding:18px 20px;margin-bottom:14px;">
           <div class="card-title">👩‍🏫 교사 추가</div>
           <div class="teacher-form">
@@ -1186,22 +1194,12 @@ const ALL_CLASSES = {
   10: ['강지우','김가인','김단아','김보현','김승연','김호연','박사랑','박세라','박하음','손여진','손예서','신예슬','신지효','양예빈','원지유','윤서현','이사랑','이서윤','이재윤','임서영','임서현','장유림','장주예','조승주','진서윤','최하은','한윤지','한채이']
 };
 
-// ── 공유 저장소 (Firestore + localStorage 캐시) ──
+// ── 공유 저장소 (문서 분리: accounts/{uid} + shared/config·scores·cheers) ──
 let STORE = {};
 try { STORE = JSON.parse(localStorage.getItem('susi_state') || '{}') || {}; } catch { STORE = {}; }
-let fbReady = false, saveTimer = null, writePending = false;
-function saveState() {
-  try { localStorage.setItem('susi_state', JSON.stringify(STORE)); } catch {}
-  if (window.fbSave) {
-    writePending = true;                 // 로컬 미저장 변경 있음 → 동기화가 덮어쓰지 않게
-    clearTimeout(saveTimer);
-    saveTimer = setTimeout(() => window.fbSave(STORE), 400);
-    // 안전장치: 저장 완료 콜백이 안 와도 6초 뒤 잠금 해제
-    setTimeout(() => { writePending = false; }, 6000);
-  }
-}
-window.__writeDone = function () { writePending = false; };
-// 편집 중인지 판단 — 동기화 스냅샷이 편집 화면을 갈아엎어 '닫히는' 문제 방지
+let fbReady = false, cfgReady = false;
+
+// 편집 중인지 판단 — 원격 갱신이 편집 화면을 갈아엎는 것 방지
 function isEditingActive() {
   if (typeof editingTeacherId !== 'undefined' && editingTeacherId) return true;   // 교사 행 편집 중
   const el = document.activeElement;
@@ -1210,60 +1208,186 @@ function isEditingActive() {
   }
   return (window.__lastEditTs && (Date.now() - window.__lastEditTs) < 6000);
 }
-// 오프라인 캐시(localStorage) 저장 — 무거우므로 3초에 한 번만 (iPad 멈춤 방지)
-let _cacheTimer = null;
+// 오프라인 캐시(localStorage) — 무거우므로 3초에 한 번만
 function cacheStoreSoon() {
-  if (_cacheTimer) return;
-  _cacheTimer = setTimeout(() => { _cacheTimer = null; try { localStorage.setItem('susi_state', JSON.stringify(STORE)); } catch {} }, 3000);
+  if (window.__cacheTimer) return;
+  window.__cacheTimer = setTimeout(() => { window.__cacheTimer = null; try { localStorage.setItem('susi_state', JSON.stringify(STORE)); } catch {} }, 3000);
 }
-function applyStateNow(data) {
-  if (data && typeof data === 'object') {
-    if (!writePending) {
-      const localScores = STORE['mb_scores'];
-      const localCheers = STORE['cheers'];
-      STORE = data;
-      STORE['mb_scores'] = mergeScores(localScores, data['mb_scores']);   // 점수는 합쳐서 보존(덮어써서 사라지는 것 방지)
-      STORE['cheers'] = mergeCheers(localCheers, data['cheers']);          // 응원 메시지도 합쳐서 보존
-      cacheStoreSoon();
-    } else {
-      // 저장 대기 중: 다른 데이터는 서버본으로 덮지 않되, 서버에 새로 생긴 점수·응원은 합쳐 보존
-      STORE['mb_scores'] = mergeScores(STORE['mb_scores'], data['mb_scores']);
-      STORE['cheers'] = mergeCheers(STORE['cheers'], data['cheers']);
-      cacheStoreSoon();
-    }
-    try { renderCheerRoll(); syncCheerInputs(); } catch (e) {}
-  }
-  fbReady = true;
+
+// ── 원격 문서 → STORE 반영 ──
+function applyConfig(data) {
+  data = data || {};
+  STORE.teachers  = Array.isArray(data.teachers)  ? data.teachers  : (STORE.teachers  || []);
+  STORE.graduates = Array.isArray(data.graduates) ? data.graduates : (STORE.graduates || []);
+  STORE.gradSeq   = data.gradSeq || STORE.gradSeq || 0;
+  cfgReady = true; fbReady = true;
   rebuildUsers();
-  const st = document.getElementById('login-err'); // 로딩중 안내 해제
+  cacheStoreSoon();
+  const st = document.getElementById('login-err');
   if (st && st.dataset.loading) { st.textContent = ''; delete st.dataset.loading; }
   try { tryRestoreSession(); } catch (e) {}
-  if (currentUser && (currentUser.role === 'admin' || currentUser.role === 'teacher')) {
-    scheduleAdminRefresh();   // 잦은 스냅샷마다 전체 재렌더로 iPad가 멈추는(터치 씹힘) 것 방지
+  if (currentUser && (currentUser.role === 'admin' || currentUser.role === 'teacher')) scheduleAdminRefresh();
+}
+function applyAccount(uid, data) {
+  if (!data) {
+    ['apps_','pw_','coin_','owned_','skin_','sound_','layout_'].forEach(p => delete STORE[p + uid]);
+  } else {
+    STORE['apps_' + uid]   = Array.isArray(data.apps) ? data.apps : [];
+    if (data.pw != null) STORE['pw_' + uid] = data.pw; else delete STORE['pw_' + uid];
+    STORE['coin_' + uid]   = (typeof data.coin === 'number') ? data.coin : 0;
+    STORE['owned_' + uid]  = Array.isArray(data.owned) ? data.owned : [];
+    STORE['skin_' + uid]   = data.skin || 'light';
+    STORE['sound_' + uid]  = !!data.sound;
+    STORE['layout_' + uid] = data.layout || 'card';
+  }
+  cacheStoreSoon();
+  if (currentUser && currentUser.role === 'student' && uid === currentUser.id) {
+    if (!isEditingActive()) { rows = getApps(uid); if (rows.length === 0) rows = [{}]; renderRows(); }
+    updateCoinDisplay();
+  } else if (currentUser && (currentUser.role === 'admin' || currentUser.role === 'teacher')) {
+    scheduleAdminRefresh();
   }
 }
-// 스냅샷이 몰려와도 무거운 처리(STORE 저장·병합·렌더)를 최대 0.8초에 한 번으로 묶어 iPad 멈춤 방지
-let _snapData, _snapTimer = null, _lastApply = 0;
-window.applyState = function (data) {
-  _snapData = data;
-  const gap = Date.now() - _lastApply, MIN = 800;
-  if (_snapTimer) return;                       // 이미 예약됨 → 최신 데이터만 반영
-  if (gap >= MIN) { _lastApply = Date.now(); const d = _snapData; _snapData = undefined; applyStateNow(d); }
-  else _snapTimer = setTimeout(() => { _snapTimer = null; _lastApply = Date.now(); const d = _snapData; _snapData = undefined; applyStateNow(d); }, MIN - gap);
-};
-// 스냅샷이 몰려와도 전체 재렌더는 디바운스로 한 번만 — 편집/패널열림/최근 터치 중이면 건너뜀
+function applyScoresDoc(data) {
+  STORE.mb_scores = mergeScores(STORE.mb_scores, (data && data.list) || []);
+  cacheStoreSoon();
+  if (currentUser && typeof currentView !== 'undefined' && currentView === 'rank' && !isEditingActive()) { try { renderRankAdmin(); } catch (e) {} }
+}
+function applyCheersDoc(data) {
+  STORE.cheers = mergeCheers(STORE.cheers, (data && data.map) || {});
+  cacheStoreSoon();
+  try { renderCheerRoll(); syncCheerInputs(); } catch (e) {}
+}
+
+// ── STORE → 원격 저장 (문서별) ──
+function accountCls(uid) {
+  const u = USERS[uid];
+  if (u) {
+    if (u.role === 'student') return u.cls;      // 1~10, 80(졸업생)
+    if (u.role === 'teacher') return 't';
+    if (u.role === 'admin')   return 'admin';
+  }
+  return null;
+}
+function accountPayload(uid) {
+  return {
+    apps:   Array.isArray(STORE['apps_' + uid]) ? STORE['apps_' + uid] : [],
+    pw:     STORE['pw_' + uid] != null ? STORE['pw_' + uid] : null,
+    coin:   typeof STORE['coin_' + uid] === 'number' ? STORE['coin_' + uid] : 0,
+    owned:  Array.isArray(STORE['owned_' + uid]) ? STORE['owned_' + uid] : [],
+    skin:   STORE['skin_' + uid] || 'light',
+    sound:  !!STORE['sound_' + uid],
+    layout: STORE['layout_' + uid] || 'card',
+    cls:    accountCls(uid)
+  };
+}
+// 명시적 저장은 즉시 반영 — 동시에 일어난 호출만 마이크로태스크로 묶어 중복 쓰기 방지.
+// (지연 저장이면 저장 직후 새로고침 시 서버에 안 올라가 '저장 전'으로 돌아가는 문제가 생김)
+const _accDirty = new Set();
+let _accFlushing = false;
+function saveAccount(uid) {
+  cacheStoreSoon();
+  if (!window.fb) return;
+  _accDirty.add(uid);
+  if (_accFlushing) return;
+  _accFlushing = true;
+  Promise.resolve().then(() => {
+    _accFlushing = false;
+    const ids = [..._accDirty]; _accDirty.clear();
+    ids.forEach(u => window.fb.saveAccount(u, accountPayload(u)));
+  });
+}
+function saveConfig() {
+  cacheStoreSoon();
+  if (window.fb) window.fb.saveShared('config', { teachers: getTeachers(), graduates: getGraduates(), gradSeq: STORE.gradSeq || 0 });
+}
+function saveScoresDoc() { if (window.fb) window.fb.saveShared('scores', { list: getScores() }); }
+function saveCheerField(uid) {
+  cacheStoreSoon();
+  if (window.fb) window.fb.mergeShared('cheers', { map: { [uid]: getCheers()[uid] } });
+}
+
+// ── 구독 설정 ──
+let _roleUnsubs = [], _subRole = null;
+function startBaseSync() {
+  if (!window.fb) return;
+  window.fb.subShared('config', applyConfig);
+  window.fb.subShared('cheers', applyCheersDoc);
+}
+function startRoleSync() {
+  if (!window.fb || !currentUser || _subRole === currentUser.id) return;
+  _subRole = currentUser.id;
+  const u = currentUser;
+  if (u.role === 'student') {
+    _roleUnsubs.push(window.fb.subAccount(u.id, applyAccount));
+  } else {
+    _roleUnsubs.push(window.fb.subShared('scores', applyScoresDoc));
+    _roleUnsubs.push(window.fb.subAccount(u.id, applyAccount));           // 본인 계정(골드·스킨)
+    if (u.role === 'admin' || u.tcls === 'head') _roleUnsubs.push(window.fb.subAllAccounts(applyAccount));
+    else if (typeof u.tcls === 'number') _roleUnsubs.push(window.fb.subClassAccounts(u.tcls, applyAccount));
+  }
+}
+function stopRoleSync() {
+  _roleUnsubs.forEach(fn => { try { fn && fn(); } catch (e) {} });
+  _roleUnsubs = []; _subRole = null;
+}
+
+// ── 1회 마이그레이션: 기존 state/all → accounts/* + shared/* (기존 문서는 백업 유지) ──
+async function migrateFromOld() {
+  if (!window.fb) { alert('Firebase 연결이 필요합니다.'); return; }
+  if (!confirm('기존 state/all 데이터를 새 구조(accounts/*, shared/*)로 복사합니다.\n기존 문서는 지우지 않습니다. 진행할까요?')) return;
+  const st = document.getElementById('mig-status');
+  const set = t => { if (st) st.textContent = t; };
+  set('기존 데이터 읽는 중…');
+  const old = await window.fb.getOldAll();
+  if (!old) { set(''); alert('기존 데이터(state/all)를 찾을 수 없습니다.'); return; }
+  // 공유 문서
+  await window.fb.saveShared('config', { teachers: old.teachers || [], graduates: old.graduates || [], gradSeq: old.gradSeq || 0 });
+  await window.fb.saveShared('scores', { list: Array.isArray(old.mb_scores) ? old.mb_scores : [] });
+  await window.fb.saveShared('cheers', { map: (old.cheers && typeof old.cheers === 'object' && !Array.isArray(old.cheers)) ? old.cheers : {} });
+  // 계정 문서: old 키에서 uid 수집 + 알려진 사용자(학생·졸업생·교사·관리자)
+  const uids = new Set();
+  Object.keys(old).forEach(k => { const m = k.match(/^(?:apps|pw|coin|owned|skin|sound|layout)_(.+)$/); if (m) uids.add(m[1]); });
+  // 교사·졸업생을 config로 반영한 뒤 USERS 재구성 → cls 부여 정확도↑
+  STORE.teachers = old.teachers || []; STORE.graduates = old.graduates || []; rebuildUsers();
+  Object.keys(USERS).forEach(u => uids.add(u));
+  const clsOf = uid => { const u = USERS[uid]; if (u) { if (u.role === 'student') return u.cls; if (u.role === 'teacher') return 't'; if (u.role === 'admin') return 'admin'; } return null; };
+  const list = [...uids];
+  let done = 0;
+  for (const uid of list) {
+    await window.fb.saveAccount(uid, {
+      apps:   Array.isArray(old['apps_' + uid]) ? old['apps_' + uid] : [],
+      pw:     old['pw_' + uid] != null ? old['pw_' + uid] : null,
+      coin:   typeof old['coin_' + uid] === 'number' ? old['coin_' + uid] : 0,
+      owned:  Array.isArray(old['owned_' + uid]) ? old['owned_' + uid] : [],
+      skin:   old['skin_' + uid] || 'light',
+      sound:  !!old['sound_' + uid],
+      layout: old['layout_' + uid] || 'card',
+      cls:    clsOf(uid)
+    });
+    done++;
+    if (done % 20 === 0) set(`이전 중… ${done}/${list.length}`);
+  }
+  set(`완료: 계정 ${done}개 + 공유문서 이전됨`);
+  alert('마이그레이션 완료: ' + done + '개 계정을 새 구조로 복사했습니다.\n기존 state/all 문서는 백업으로 남아 있습니다.');
+}
+// 인증 완료 → 기본 구독 시작 (config·cheers). config 로딩 시 로그인 가능
+window.fbAuthReady  = function () { startBaseSync(); };
+window.fbAuthFailed = function () { fbReady = true; cfgReady = true; rebuildUsers(); try { tryRestoreSession(); } catch (e) {} };
+// 4초 내 응답 없으면 로컬 캐시로 진행
+setTimeout(() => { if (!fbReady) { fbReady = true; cfgReady = true; rebuildUsers(); try { tryRestoreSession(); } catch (e) {} } }, 4000);
+
+// 관리자 목록 재렌더 디바운스 — 편집/패널열림/최근 터치 중이면 미룸
 let adminRefreshTimer = null;
 function scheduleAdminRefresh() {
   if (adminRefreshTimer) clearTimeout(adminRefreshTimer);
   adminRefreshTimer = setTimeout(() => {
     adminRefreshTimer = null;
     if (!currentUser || (currentUser.role !== 'admin' && currentUser.role !== 'teacher')) return;
-    if (isEditingActive() || document.querySelector('.student-row.open')) { scheduleAdminRefresh(); return; }  // 아직 상호작용 중이면 뒤로 미룸
+    if (isEditingActive() || document.querySelector('.student-row.open')) { scheduleAdminRefresh(); return; }
     try { refreshAdmin(); } catch (e) {}
   }, 1200);
 }
-// Firebase가 4초 내 응답 없으면 로컬 캐시로라도 진행
-setTimeout(() => { if (!fbReady) { fbReady = true; rebuildUsers(); try { tryRestoreSession(); } catch (e) {} } }, 4000);
 
 // 새로고침 시 세션이 있으면 로그인 화면 대신 '불러오는 중'을 먼저 보여 깜빡임 방지
 try {
@@ -1289,9 +1413,9 @@ function rebuildUsers() {
 
 // ── GRADUATES (80반) / TEACHERS ──
 function getGraduates() { return Array.isArray(STORE.graduates) ? STORE.graduates : []; }
-function setGraduates(a) { STORE.graduates = a; saveState(); }
+function setGraduates(a) { STORE.graduates = a; saveConfig(); }
 function getTeachers() { return Array.isArray(STORE.teachers) ? STORE.teachers : []; }
-function setTeachers(a) { STORE.teachers = a; saveState(); }
+function setTeachers(a) { STORE.teachers = a; saveConfig(); }
 rebuildUsers();
 
 function isAdminLike() { return currentUser && (currentUser.role === 'admin' || (currentUser.role === 'teacher' && currentUser.tcls === 'head')); }
@@ -1342,19 +1466,21 @@ let rows = [];
 
 // ── STORAGE (공유 STORE 기반) ──
 function getApps(uid)    { const v = STORE['apps_' + uid]; return Array.isArray(v) ? v : []; }
-function setApps(uid, d) { STORE['apps_' + uid] = d; saveState(); }
+function setApps(uid, d) { STORE['apps_' + uid] = d; saveAccount(uid); }
 function getPw(uid)      { const s = STORE['pw_' + uid]; if (s != null) return s; if (uid === 'admin') return 'admin1234'; if (USERS[uid] && USERS[uid].role === 'teacher') return '1234'; return uid; }
-function setPw(uid, pw)  { STORE['pw_' + uid] = pw; saveState(); }
-function resetPw(uid)    { delete STORE['pw_' + uid]; saveState(); }
+function setPw(uid, pw)  { STORE['pw_' + uid] = pw; saveAccount(uid); }
+function resetPw(uid)    { delete STORE['pw_' + uid]; saveAccount(uid); }
 function isDefaultPw(uid){ return STORE['pw_' + uid] == null; }
 
 // ── LOGIN ──
-function doLogin() {
+async function doLogin() {
   const id  = document.getElementById('login-id').value.trim();
   const pw  = document.getElementById('login-pw').value;
   const err = document.getElementById('login-err');
-  if (!fbReady) { err.textContent = '데이터를 불러오는 중입니다. 잠시 후 다시 시도하세요.'; err.dataset.loading = '1'; return; }
+  if (!cfgReady) { err.textContent = '데이터를 불러오는 중입니다. 잠시 후 다시 시도하세요.'; err.dataset.loading = '1'; return; }
   if (!USERS[id]) { err.textContent = '존재하지 않는 아이디입니다.'; return; }
+  err.textContent = '확인 중…';
+  if (window.fb) { const acc = await window.fb.getAccount(id); if (acc) applyAccount(id, acc); }   // 본인 계정(비번 포함) 조회
   if (pw !== getPw(id)) { err.textContent = '비밀번호가 올바르지 않습니다.'; return; }
   err.textContent = '';
   try { sessionStorage.setItem('session_uid', id); } catch (e) {}
@@ -1379,16 +1505,23 @@ function enterSession(id) {
   }
   syncCheerInputs();
   startCheerRoll();
+  startRoleSync();   // 역할별 원격 구독 시작 (학생=본인, 교사=담당반, 관리자=전체)
 }
 
 // 새로고침 시 세션 복원 (데이터 준비 후 1회)
 function hideBoot() { const b = document.getElementById('boot-loading'); if (b) b.style.display = 'none'; }
-function tryRestoreSession() {
-  if (currentUser) { hideBoot(); return; }
+let _restoring = false;
+async function tryRestoreSession() {
+  if (currentUser || _restoring) { hideBoot(); return; }
   let uid = null;
   try { uid = sessionStorage.getItem('session_uid'); } catch (e) {}
-  if (uid && USERS[uid]) { enterSession(uid); hideBoot(); }
-  else { hideBoot(); document.getElementById('login-page').style.display = 'flex'; }
+  if (uid && USERS[uid]) {
+    _restoring = true;
+    try { if (window.fb) { const acc = await window.fb.getAccount(uid); if (acc) applyAccount(uid, acc); } } catch (e) {}
+    _restoring = false;
+    if (currentUser) { hideBoot(); return; }
+    enterSession(uid); hideBoot();
+  } else { hideBoot(); document.getElementById('login-page').style.display = 'flex'; }
 }
 
 function setupAdminForUser() {
@@ -1421,6 +1554,7 @@ function applyRolePerms() {
 function doLogout() {
   currentUser = null;
   try { sessionStorage.removeItem('session_uid'); } catch (e) {}
+  stopRoleSync();
   stopCheerRoll();
   adminRows = {};
   applySkinClass('light');
@@ -1491,7 +1625,7 @@ function markLayoutBtns() {
 
 function setEntryLayout(mode) {
   entryLayout = mode;
-  if (currentUser) { STORE['layout_' + currentUser.id] = mode; saveState(); }
+  if (currentUser) { STORE['layout_' + currentUser.id] = mode; saveAccount(currentUser.id); }
   markLayoutBtns();
   if (currentUser && currentUser.role === 'student') renderRows();
   else if (currentView === 'status') renderAdmin();
@@ -1762,11 +1896,11 @@ function addGraduate() {
   const name = inp.value.trim();
   if (!name) { inp.focus(); return; }
   const seq = (parseInt(STORE.gradSeq) || 0) + 1;
-  STORE.gradSeq = seq; saveState();
+  STORE.gradSeq = seq;
   const id = '380' + String(seq).padStart(2, '0');
   const grads = getGraduates();
   grads.push({ id, name });
-  setGraduates(grads);
+  setGraduates(grads);   // config 저장(gradSeq 포함)
   USERS[id] = { role: 'student', name, cls: 80 };
   inp.value = '';
   renderAdmin();
@@ -1780,9 +1914,8 @@ function deleteGraduate(uid) {
   setGraduates(getGraduates().filter(g => g.id !== uid));
   delete USERS[uid];
   delete adminRows[uid];
-  delete STORE['apps_' + uid];
-  delete STORE['pw_' + uid];
-  saveState();
+  ['apps_','pw_','coin_','owned_','skin_','sound_','layout_'].forEach(p => delete STORE[p + uid]);
+  if (window.fb) window.fb.deleteAccount(uid);   // 졸업생 계정 문서 삭제
   renderAdmin();
 }
 
@@ -1801,7 +1934,8 @@ function editGraduate(uid) {
   ['apps_', 'pw_', 'coin_', 'owned_', 'skin_', 'sound_', 'layout_'].forEach(pre => {
     if (STORE[pre + uid] !== undefined) { STORE[pre + nw] = STORE[pre + uid]; delete STORE[pre + uid]; }
   });
-  saveState();
+  saveAccount(nw);                                // 새 학번 계정 저장
+  if (window.fb) window.fb.deleteAccount(uid);    // 옛 학번 계정 삭제
   if (adminRows[uid]) { adminRows[nw] = adminRows[uid]; delete adminRows[uid]; }
   renderAdmin();
 }
@@ -1982,13 +2116,14 @@ function saveTeacherRow(id) {
   t.goldPerm = goldPerm;
   t.pwPerm = pwPerm;
   if (newId !== id) {
-    ['pw_', 'coin_', 'owned_', 'skin_', 'layout_'].forEach(pre => {
+    ['pw_', 'coin_', 'owned_', 'skin_', 'sound_', 'layout_'].forEach(pre => {
       if (STORE[pre + id] !== undefined) { STORE[pre + newId] = STORE[pre + id]; delete STORE[pre + id]; }
     });
     t.id = newId;
   }
   setTeachers(teachers);
   rebuildUsers();
+  if (newId !== id) { saveAccount(newId); if (window.fb) window.fb.deleteAccount(id); }   // 계정 문서 이관
   editingTeacherId = null;
   renderTeachers();
 }
@@ -1999,9 +2134,8 @@ function deleteTeacher(id) {
   if (!confirm(`${u.name} 선생님 (${id}) 계정을 삭제할까요?`)) return;
   setTeachers(getTeachers().filter(t => t.id !== id));
   delete USERS[id];
-  delete STORE['pw_' + id];
-  delete STORE['coin_' + id];
-  saveState();
+  ['apps_','pw_','coin_','owned_','skin_','sound_','layout_'].forEach(p => delete STORE[p + id]);
+  if (window.fb) window.fb.deleteAccount(id);   // 교사 계정 문서 삭제
   renderTeachers();
 }
 
@@ -2298,14 +2432,14 @@ function getCoin(uid) {
   if (v == null) return uid === 'admin' ? 100 : 0;
   return parseInt(v) || 0;
 }
-function setCoin(uid, n) { STORE['coin_' + uid] = n; saveState(); }
+function setCoin(uid, n) { STORE['coin_' + uid] = n; saveAccount(uid); }
 function getOwned(uid) {
   const v = STORE['owned_' + uid];
   return Array.isArray(v) ? v : ['light', 'dark'];
 }
-function setOwned(uid, arr) { STORE['owned_' + uid] = arr; saveState(); }
+function setOwned(uid, arr) { STORE['owned_' + uid] = arr; saveAccount(uid); }
 function getUserSkin(uid) { return STORE['skin_' + uid] || 'light'; }
-function setUserSkin(uid, s) { STORE['skin_' + uid] = s; saveState(); }
+function setUserSkin(uid, s) { STORE['skin_' + uid] = s; saveAccount(uid); }
 
 function currentSkin() {
   const cl = document.body.classList;
@@ -2388,7 +2522,7 @@ function toggleGameSound() {
   if (!currentUser) return;
   const on = !STORE['sound_' + currentUser.id];
   STORE['sound_' + currentUser.id] = on;
-  saveState();
+  saveAccount(currentUser.id);
   updateGameSoundBtn();
   const frame = document.getElementById('game-frame');
   try { frame.contentWindow.postMessage({ type: 'monsterball-sound', on }, '*'); } catch (e) {}
@@ -2402,7 +2536,7 @@ window.addEventListener('message', (e) => {
   const data = e.data;
   if (!data || typeof data !== 'object') return;
   if (data.type === 'monsterball-sound-change') {
-    if (currentUser) { STORE['sound_' + currentUser.id] = !!data.on; saveState(); updateGameSoundBtn(); }
+    if (currentUser) { STORE['sound_' + currentUser.id] = !!data.on; saveAccount(currentUser.id); updateGameSoundBtn(); }
     return;
   }
   if (data.type === 'monsterball-gameover') {
@@ -2418,7 +2552,7 @@ window.addEventListener('message', (e) => {
 
 // 랭킹 (역대 / 주간, 사용자별 최고기록)
 function getScores() { const v = STORE['mb_scores']; return Array.isArray(v) ? v : []; }
-function setScores(a) { STORE['mb_scores'] = a; saveState(); }
+function setScores(a) { STORE['mb_scores'] = a; saveScoresDoc(); }
 // 점수 목록 합치기 — 동시 사용 시 서버본이 로컬 기록을 덮어써 사라지는 것 방지
 // 같은 기록(uid+ts) 충돌 시: 관리자 수정(edited) 최신이 우선, 없으면 삭제표시 유지 + 더 낮은 점수
 function mergeScores(a, b) {
@@ -2445,9 +2579,9 @@ function mergeScores(a, b) {
 }
 function recordScore(uid, name, score) {
   if (USERS[uid] && USERS[uid].role === 'admin') return;   // 관리자는 랭킹 제외
-  const s = getScores();
-  s.push({ uid, name, score: Math.round(score * 10) / 10, ts: Date.now() });
-  setScores(s);
+  const rec = { uid, name, score: Math.round(score * 10) / 10, ts: Date.now() };
+  const s = getScores(); s.push(rec); STORE['mb_scores'] = s; cacheStoreSoon();
+  if (window.fb) window.fb.appendScore(rec); else saveScoresDoc();   // 동시 기록 안전(arrayUnion)
 }
 function bestPerUser(list) {
   const m = {};
@@ -2544,7 +2678,7 @@ function saveMyCheer(text) {
   c[currentUser.id] = t
     ? { uid: currentUser.id, name: currentUser.name, text: t, ts: Date.now() }
     : { uid: currentUser.id, name: currentUser.name, text: '', deleted: true, ts: Date.now() };
-  STORE['cheers'] = c; saveState();
+  STORE['cheers'] = c; saveCheerField(currentUser.id);
 }
 function updateCheerCounts() {
   [['cheer-input','cheer-count'],['cheer-input-t','cheer-count-t']].forEach(([i, c]) => {
@@ -2620,7 +2754,7 @@ function editCheer(uid) {
   const t = input.trim().slice(0, CHEER_MAX);
   const all = { ...getCheers() };
   all[uid] = { ...c, text: t, deleted: t ? undefined : true, ts: Date.now() };
-  STORE['cheers'] = all; saveState();
+  STORE['cheers'] = all; saveCheerField(uid);
   renderCheerAdmin(); renderCheerRoll();
 }
 function deleteCheer(uid) {
@@ -2630,16 +2764,22 @@ function deleteCheer(uid) {
   if (!confirm(`${nm} 님의 응원 메시지를 삭제할까요?`)) return;
   const all = { ...getCheers() };
   all[uid] = { ...c, text: '', deleted: true, ts: Date.now() };
-  STORE['cheers'] = all; saveState();
+  STORE['cheers'] = all; saveCheerField(uid);
   renderCheerAdmin(); renderCheerRoll();
 }
 
 function openRankModal() {
-  const scores = getScores().filter(x => x.uid !== 'admin');   // 관리자 제외
-  const weekAgo = Date.now() - 7 * 24 * 3600 * 1000;
-  document.getElementById('rank-all').innerHTML = rankListHtml(bestPerUser(scores).slice(0, 10));
-  document.getElementById('rank-week').innerHTML = rankListHtml(bestPerUser(scores.filter(x => x.ts >= weekAgo)).slice(0, 10));
-  document.getElementById('rank-modal-bg').classList.add('open');
+  const render = () => {
+    const scores = getScores().filter(x => x.uid !== 'admin');   // 관리자 제외
+    const weekAgo = Date.now() - 7 * 24 * 3600 * 1000;
+    document.getElementById('rank-all').innerHTML = rankListHtml(bestPerUser(scores).slice(0, 10));
+    document.getElementById('rank-week').innerHTML = rankListHtml(bestPerUser(scores.filter(x => x.ts >= weekAgo)).slice(0, 10));
+    document.getElementById('rank-modal-bg').classList.add('open');
+  };
+  // 학생은 점수를 구독하지 않으므로 열 때 1회 조회
+  if (window.fb && currentUser && currentUser.role === 'student') {
+    window.fb.getShared('scores').then(d => { STORE.mb_scores = mergeScores(STORE.mb_scores, (d && d.list) || []); render(); });
+  } else render();
 }
 function closeRankModal() { document.getElementById('rank-modal-bg').classList.remove('open'); }
 
@@ -2672,10 +2812,10 @@ document.addEventListener('keydown', e => {
 document.addEventListener('contextmenu', function (e) { e.preventDefault(); });
 </script>
 
-<!-- ── Firebase (공유 데이터베이스) ── -->
+<!-- ── Firebase (공유 데이터베이스 · 문서 분리 구조) ── -->
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/12.15.0/firebase-app.js";
-  import { getFirestore, doc, onSnapshot, setDoc } from "https://www.gstatic.com/firebasejs/12.15.0/firebase-firestore.js";
+  import { getFirestore, doc, collection, onSnapshot, setDoc, updateDoc, deleteDoc, getDoc, query, where, arrayUnion } from "https://www.gstatic.com/firebasejs/12.15.0/firebase-firestore.js";
   import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/12.15.0/firebase-auth.js";
   const firebaseConfig = {
     apiKey: "AIzaSyCqltNq1nOsTXLzlsXJmyXvAxA2pDDv-y4",
@@ -2688,24 +2828,33 @@ document.addEventListener('contextmenu', function (e) { e.preventDefault(); });
   const app = initializeApp(firebaseConfig);
   const db = getFirestore(app);
   const auth = getAuth(app);
-  const ref = doc(db, "state", "all");
-  window.fbSave = (data) => {
-    try {
-      setDoc(ref, JSON.parse(JSON.stringify(data)))
-        .catch(e => console.warn('저장 실패', e))
-        .finally(() => { if (window.__writeDone) window.__writeDone(); });
-    } catch (e) { console.warn('저장 예외', e); if (window.__writeDone) window.__writeDone(); }
+  const accCol = collection(db, "accounts");
+  const accDoc = uid => doc(db, "accounts", String(uid));
+  const shDoc  = id  => doc(db, "shared", id);
+  const oldDoc = doc(db, "state", "all");                 // 기존 문서(백업·마이그레이션용)
+  const clean  = o => JSON.parse(JSON.stringify(o));
+  const changeCb = (snap, cb) => snap.docChanges().forEach(ch => cb(ch.doc.id, ch.type === 'removed' ? null : ch.doc.data()));
+
+  window.fb = {
+    // 1회 읽기
+    getAccount: uid => getDoc(accDoc(uid)).then(s => s.exists() ? s.data() : null).catch(() => undefined),
+    getShared:  id  => getDoc(shDoc(id)).then(s => s.exists() ? s.data() : null).catch(() => undefined),
+    getOldAll:  ()  => getDoc(oldDoc).then(s => s.exists() ? s.data() : null).catch(() => undefined),
+    // 쓰기
+    saveAccount: (uid, data) => setDoc(accDoc(uid), clean(data)).catch(e => console.warn('계정 저장 실패', e)),
+    deleteAccount: uid => deleteDoc(accDoc(uid)).catch(e => console.warn('계정 삭제 실패', e)),
+    saveShared:  (id, data)  => setDoc(shDoc(id), clean(data)).catch(e => console.warn('shared 저장 실패', e)),
+    mergeShared: (id, data)  => setDoc(shDoc(id), clean(data), { merge: true }).catch(e => console.warn('shared 병합 실패', e)),
+    appendScore: rec => setDoc(shDoc('scores'), { list: arrayUnion(clean(rec)) }, { merge: true }).catch(e => console.warn('점수 저장 실패', e)),
+    // 구독
+    subAccount:       (uid, cb) => onSnapshot(accDoc(uid), s => cb(uid, s.exists() ? s.data() : null), e => console.warn('구독 오류', e)),
+    subAllAccounts:   cb        => onSnapshot(accCol, s => changeCb(s, cb), e => console.warn('구독 오류', e)),
+    subClassAccounts: (cls, cb) => onSnapshot(query(accCol, where('cls', '==', cls)), s => changeCb(s, cb), e => console.warn('구독 오류', e)),
+    subShared:        (id, cb)  => onSnapshot(shDoc(id), s => cb(s.exists() ? s.data() : null), e => console.warn('구독 오류', e)),
   };
-  function startSync() {
-    onSnapshot(ref,
-      (snap) => { if (window.applyState) window.applyState(snap.exists() ? snap.data() : {}); },
-      (err) => { console.warn('동기화 오류(로컬 캐시 사용)', err); if (window.applyState) window.applyState(null); }
-    );
-  }
-  // 익명 인증 후 동기화 시작 (규칙: 인증된 요청만 허용)
   signInAnonymously(auth)
-    .then(startSync)
-    .catch((err) => { console.warn('익명 인증 실패(로컬 캐시 사용)', err); if (window.applyState) window.applyState(null); });
+    .then(() => { if (window.fbAuthReady) window.fbAuthReady(); })
+    .catch(err => { console.warn('익명 인증 실패(로컬 캐시 사용)', err); if (window.fbAuthFailed) window.fbAuthFailed(); });
 </script>
 </body>
 </html>
