@@ -1245,6 +1245,10 @@ function applyAccount(uid, data) {
     if (!isEditingActive()) { rows = getApps(uid); if (rows.length === 0) rows = [{}]; renderRows(); }
     updateCoinDisplay();
   } else if (currentUser && (currentUser.role === 'admin' || currentUser.role === 'teacher')) {
+    // 이 학생 데이터가 원격으로 바뀌면 편집 사본을 최신화 (지금 그 학생 패널을 열어 편집 중이면 유지)
+    const detail = document.getElementById('detail-' + uid);
+    const rowOpen = !!(detail && detail.closest('.student-row') && detail.closest('.student-row').classList.contains('open'));
+    if (!rowOpen && typeof adminRows !== 'undefined' && adminRows) delete adminRows[uid];
     scheduleAdminRefresh();
   }
 }
