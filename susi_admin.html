@@ -2347,7 +2347,8 @@ function renderCell(f, value, attrs) {
   }
   const ph = f.ph !== undefined ? f.ph : f.label;
   const dl = f.dl ? `list="dl-${f.dl}" data-dl="${f.dl}" onfocus="prepDatalist(this)"` : '';
-  return `<input class="cell-input" type="text" value="${esc(v)}" placeholder="${esc(ph)}" ${attrs} ${dl} ${style} oninput="cellChange(this)">`;
+  const onchangeAttr = f.dl === 'univ' ? ' onchange="normalizeSchoolInput(this)"' : '';
+  return `<input class="cell-input" type="text" value="${esc(v)}" placeholder="${esc(ph)}" ${attrs} ${dl}${onchangeAttr} ${style} oninput="cellChange(this)">`;
 }
 
 // 자동완성(미리 완성) — 학교명 / 학교별 전형명 (PDF 데이터)
@@ -2374,6 +2375,35 @@ function prepDatalist(el) {
     setDatalist('dl-dept', (SUSI_DB.deptByUniv && SUSI_DB.deptByUniv[school]) || []);
   else if (dl === 'jeon')
     setDatalist('dl-jeon', (SUSI_DB.jeonByUniv && SUSI_DB.jeonByUniv[school]) || []);
+}
+
+// 학교명 입력값을 자동완성 목록의 정식 명칭으로 정규화
+// 예: "중앙대학교" 입력 시 목록에 이미 "중앙대"가 있으면 "중앙대"로 자동 교정
+function normalizeUnivName(raw, list) {
+  if (!raw) return null;
+  if (list.includes(raw)) return raw;   // 이미 정확한 이름
+  const candidates = [];
+  if (raw.endsWith('여자대학교')) candidates.push(raw.slice(0, -5) + '여대');   // OO여자대학교 -> OO여대
+  if (raw.endsWith('대학교')) candidates.push(raw.slice(0, -3) + '대');         // OO대학교 -> OO대
+  if (raw.endsWith('학교')) candidates.push(raw.slice(0, -2));                  // (일반적인 'OO학교' 형태) -> OO
+  for (const c of candidates) { if (c && list.includes(c)) return c; }
+  // 목록 항목 + 흔한 접미사(학교/대학교/대학) == 입력값인 경우도 매칭
+  const suffixes = ['학교', '대학교', '대학'];
+  for (const u of list) {
+    if (u === raw || !raw.startsWith(u)) continue;
+    if (suffixes.includes(raw.slice(u.length))) return u;
+  }
+  return null;   // 매칭되는 기존 학교명 없음 → 입력값 그대로 유지(직접 입력 학교로 간주)
+}
+function normalizeSchoolInput(el) {
+  if (typeof SUSI_DB === 'undefined') return;
+  const raw = (el.value || '').trim();
+  if (!raw) return;
+  const norm = normalizeUnivName(raw, SUSI_DB.universities || []);
+  if (norm && norm !== el.value) {
+    el.value = norm;
+    cellChange(el);   // 정규화된 값으로 저장
+  }
 }
 
 function ensureDatalist(f) {
