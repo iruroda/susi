@@ -1492,7 +1492,7 @@ const FIELDS = [
   { key: 'deadline', label: '원서 마감일',  w: 140, type: 'date' },
   { key: 'result',   label: '합격 발표일',  w: 140, type: 'date' },
   { key: 'examNo',   label: '수험번호',     w: 90,  type: 'text' },
-  { key: 'judge',    label: '판단',         w: 95,  type: 'selectText', options: ['상향','소신','적정','안정','하향'] },
+  { key: 'judge',    label: '판단',         w: 95,  type: 'selectText', options: ['하향','안정','적정','소신','상향','우주상향'] },
   { key: 'etc',      label: '기타 의견',    w: 180, type: 'text', ph: '' },
   { key: 'recommend',label: '추천전형',     w: 70,  type: 'check' }
 ];
@@ -2342,20 +2342,40 @@ function esc(s) {
 }
 
 // ── 판단(judge) 값별 색상 — 해당 학교 행 전체(학교명~판단) 배경 ──
+// '우주상향'만 예외로 우주 이미지 배경 + 연보라 글씨, 나머지 5개는 원래 색상 유지
 const JUDGE_COLORS = { '상향': '#F26C4F', '소신': '#F9AD81', '적정': '#FFF799', '안정': '#A3D39C', '하향': '#3CB878' };
+const JUDGE_BG_IMAGE   = "url('woojusanghyang.png')";
+const JUDGE_TEXT_COLOR = '#D8BFFF';
 // 색칠 대상 칸: 학교명부터 판단까지 (기타 의견·추천전형 제외)
 const JUDGE_COLOR_KEYS = new Set(FIELDS.slice(0, FIELDS.findIndex(f => f.key === 'judge') + 1).map(f => f.key));
-function setCellColor(el, c) {
-  el.style.backgroundColor = c || '';
-  el.style.color = c ? '#333' : '';   // 글자색은 항상 검은색
+// mode: '' → 색 없음, 'space' → 우주상향 전용 배경, 그 외 → JUDGE_COLORS의 색상 코드
+function setCellColor(el, mode) {
+  if (mode === 'space') {
+    el.style.backgroundColor    = '';
+    el.style.backgroundImage    = JUDGE_BG_IMAGE;
+    el.style.backgroundSize     = 'cover';
+    el.style.backgroundPosition = 'center';
+    el.style.backgroundRepeat   = 'no-repeat';
+    el.style.color = JUDGE_TEXT_COLOR;
+  } else if (mode) {
+    el.style.backgroundImage = '';
+    el.style.backgroundColor = mode;
+    el.style.color = '#333';   // 글자색은 항상 검은색
+  } else {
+    el.style.backgroundImage = '';
+    el.style.backgroundColor = '';
+    el.style.color = '';
+  }
 }
 function applyJudgeRowColor(judgeEl) {
-  const c = JUDGE_COLORS[judgeEl.value] || '';
+  const v = judgeEl.value;
+  const mode = v === '우주상향' ? 'space' : (JUDGE_COLORS[v] || '');
   const cont = judgeEl.closest('.entry-card') || judgeEl.closest('tr');
-  if (!cont) { setCellColor(judgeEl, c); return; }
+  if (!cont) { setCellColor(judgeEl, mode); judgeEl.style.color = mode ? '#333' : ''; return; }
   cont.querySelectorAll('.cell-input').forEach(el => {
-    if (JUDGE_COLOR_KEYS.has(el.dataset.key)) setCellColor(el, c);
+    if (JUDGE_COLOR_KEYS.has(el.dataset.key)) setCellColor(el, mode);
   });
+  judgeEl.style.color = mode ? '#333' : '';   // 판단 드롭다운 자체 글씨는 항상 검은색 유지(옵션 목록 가독성)
 }
 function colorAllJudgeRows(scope) {
   (scope || document).querySelectorAll('[data-key="judge"]').forEach(applyJudgeRowColor);
