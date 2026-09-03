@@ -1328,12 +1328,47 @@ function startRoleSync() {
     _roleUnsubs.push(window.fb.subShared('scores', applyScoresDoc));
     _roleUnsubs.push(window.fb.subAccount(u.id, applyAccount));           // 본인 계정(골드·스킨)
     if (u.role === 'admin' || u.tcls === 'head') _roleUnsubs.push(window.fb.subAllAccounts(applyAccount));
-    else if (typeof u.tcls === 'number') _roleUnsubs.push(window.fb.subClassAccounts(u.tcls, applyAccount));
+    else if (typeof u.tcls === 'number') {
+      _roleUnsubs.push(window.fb.subClassAccounts(u.tcls, applyAccount));  // 실시간: 담당 학급만(동시저장 충돌 방지)
+      startCrossClassRefresh();                                            // 다른 학급: 실시간 대신 주기적 스냅샷으로만 채움
+    }
   }
 }
 function stopRoleSync() {
   _roleUnsubs.forEach(fn => { try { fn && fn(); } catch (e) {} });
   _roleUnsubs = []; _subRole = null;
+  stopCrossClassRefresh();
+}
+
+// ── 학급 담임: 다른 반 학생 현황을 실시간이 아닌 '가끔' 스냅샷으로 갱신 ──
+// 300명이 동시에 입력하는 상황에서 전체를 실시간 구독하면 저장 충돌 위험이 커서,
+// 본인 학급만 실시간으로 받고 나머지 학급은 이 스냅샷(1회성 조회)으로만 채운다.
+// 자주 볼 필요는 없다고 해서(가끔이면 충분) 주기를 넉넉히 잡음 — 필요하면 아래 숫자만 조절.
+const CROSS_CLASS_REFRESH_MS = 20 * 60 * 1000; // 20분마다
+let _crossClassTimer = null;
+let _crossClassFetching = false;
+let _lastCrossClassFetch = 0;
+async function syncAllAccountsOnce() {
+  if (!window.fb || !window.fb.getAllAccounts || _crossClassFetching) return;
+  _crossClassFetching = true;
+  try {
+    const all = await window.fb.getAllAccounts();
+    if (all) Object.keys(all).forEach(uid => applyAccount(uid, all[uid]));
+    _lastCrossClassFetch = Date.now();
+  } finally { _crossClassFetching = false; }
+}
+function startCrossClassRefresh() {
+  syncAllAccountsOnce();
+  if (_crossClassTimer) clearInterval(_crossClassTimer);
+  _crossClassTimer = setInterval(syncAllAccountsOnce, CROSS_CLASS_REFRESH_MS);
+}
+function stopCrossClassRefresh() {
+  if (_crossClassTimer) clearInterval(_crossClassTimer);
+  _crossClassTimer = null;
+}
+// 다른 반 탭을 열었는데 마지막 스냅샷이 2분 넘게 지났으면 바로 한 번 더 갱신
+function refreshCrossClassIfStale() {
+  if (Date.now() - _lastCrossClassFetch > 2 * 60 * 1000) syncAllAccountsOnce();
 }
 
 // ── 1회 마이그레이션: 기존 state/all → accounts/* + shared/* (기존 문서는 백업 유지) ──
@@ -1509,7 +1544,7 @@ function enterSession(id) {
   }
   syncCheerInputs();
   startCheerRoll();
-  startRoleSync();   // 역할별 원격 구독 시작 (학생=본인, 교사=담당반, 관리자=전체)
+  startRoleSync();   // 역할별 원격 구독 시작 (학생=본인, 교사=담당반 실시간+전체 주기 스냅샷, 관리자=전체 실시간)
 }
 
 // 새로고침 시 세션 복원 (데이터 준비 후 1회)
@@ -1761,6 +1796,10 @@ function selectClass(cls) {
   currentFilter = 'all';
   FILTER_KEYS.forEach(k => document.getElementById('f-'+k).classList.toggle('active', k==='all'));
   document.getElementById('search-input').value = '';
+  // 학급 담임이 다른 반 탭을 열면(본인 반은 실시간이라 제외) 스냅샷이 오래됐을 때만 갱신
+  if (currentUser && currentUser.role === 'teacher' && typeof currentUser.tcls === 'number' && cls !== currentUser.tcls) {
+    refreshCrossClassIfStale();
+  }
   renderAdmin();
 }
 
@@ -2849,7 +2888,7 @@ document.addEventListener('contextmenu', function (e) { e.preventDefault(); });
 <!-- ── Firebase (공유 데이터베이스 · 문서 분리 구조) ── -->
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/12.15.0/firebase-app.js";
-  import { getFirestore, doc, collection, onSnapshot, setDoc, updateDoc, deleteDoc, getDoc, query, where, arrayUnion } from "https://www.gstatic.com/firebasejs/12.15.0/firebase-firestore.js";
+  import { getFirestore, doc, collection, onSnapshot, setDoc, updateDoc, deleteDoc, getDoc, getDocs, query, where, arrayUnion } from "https://www.gstatic.com/firebasejs/12.15.0/firebase-firestore.js";
   import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/12.15.0/firebase-auth.js";
   const firebaseConfig = {
     apiKey: "AIzaSyCqltNq1nOsTXLzlsXJmyXvAxA2pDDv-y4",
@@ -2874,6 +2913,8 @@ document.addEventListener('contextmenu', function (e) { e.preventDefault(); });
     getAccount: uid => getDoc(accDoc(uid)).then(s => s.exists() ? s.data() : null).catch(() => undefined),
     getShared:  id  => getDoc(shDoc(id)).then(s => s.exists() ? s.data() : null).catch(() => undefined),
     getOldAll:  ()  => getDoc(oldDoc).then(s => s.exists() ? s.data() : null).catch(() => undefined),
+    // 전체 계정 1회 스냅샷 조회(실시간 구독 아님) — 학급 교사가 다른 반 현황을 가끔 새로고침할 때 사용
+    getAllAccounts: () => getDocs(accCol).then(snap => { const out = {}; snap.forEach(d => out[d.id] = d.data()); return out; }).catch(e => { console.warn('전체 계정 조회 실패', e); return null; }),
     // 쓰기
     saveAccount: (uid, data) => setDoc(accDoc(uid), clean(data)).catch(e => console.warn('계정 저장 실패', e)),
     deleteAccount: uid => deleteDoc(accDoc(uid)).catch(e => console.warn('계정 삭제 실패', e)),
