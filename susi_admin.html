@@ -1504,7 +1504,14 @@ let selectedClass = 0;
 let rows = [];
 
 // ── STORAGE (공유 STORE 기반) ──
-function getApps(uid)    { const v = STORE['apps_' + uid]; return Array.isArray(v) ? v : []; }
+function getApps(uid) {
+  const v = STORE['apps_' + uid];
+  const arr = Array.isArray(v) ? v : [];
+  // 예전에 '초상향'이라는 이름으로 저장했던 값을 새 이름('우주상향')으로 자동 보정
+  // (이름만 바뀐 것뿐이라 배경색 로직이 못 알아보고 색이 안 입혀지던 문제)
+  arr.forEach(r => { if (r && r.judge === '초상향') r.judge = '우주상향'; });
+  return arr;
+}
 function setApps(uid, d) { STORE['apps_' + uid] = d; saveAccount(uid); }
 function getPw(uid)      { const s = STORE['pw_' + uid]; if (s != null) return s; if (uid === 'admin') return 'admin1234'; if (USERS[uid] && USERS[uid].role === 'teacher') return '1234'; return uid; }
 function setPw(uid, pw)  { STORE['pw_' + uid] = pw; saveAccount(uid); }
@@ -2369,7 +2376,7 @@ function setCellColor(el, mode) {
 }
 function applyJudgeRowColor(judgeEl) {
   const v = judgeEl.value;
-  const mode = v === '우주상향' ? 'space' : (JUDGE_COLORS[v] || '');
+  const mode = (v === '우주상향' || v === '초상향') ? 'space' : (JUDGE_COLORS[v] || '');   // '초상향'은 예전 이름(호환용)
   const cont = judgeEl.closest('.entry-card') || judgeEl.closest('tr');
   if (!cont) { setCellColor(judgeEl, mode); judgeEl.style.color = mode ? '#333' : ''; return; }
   cont.querySelectorAll('.cell-input').forEach(el => {
