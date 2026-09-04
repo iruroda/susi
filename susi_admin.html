@@ -2378,11 +2378,21 @@ function applyJudgeRowColor(judgeEl) {
   const v = judgeEl.value;
   const mode = (v === '우주상향' || v === '초상향') ? 'space' : (JUDGE_COLORS[v] || '');   // '초상향'은 예전 이름(호환용)
   const cont = judgeEl.closest('.entry-card') || judgeEl.closest('tr');
-  if (!cont) { setCellColor(judgeEl, mode); judgeEl.style.color = mode ? '#333' : ''; return; }
+  if (!cont) { setCellColor(judgeEl, mode); fixJudgeSelectStyle(judgeEl, mode); return; }
   cont.querySelectorAll('.cell-input').forEach(el => {
     if (JUDGE_COLOR_KEYS.has(el.dataset.key)) setCellColor(el, mode);
   });
-  judgeEl.style.color = mode ? '#333' : '';   // 판단 드롭다운 자체 글씨는 항상 검은색 유지(옵션 목록 가독성)
+  fixJudgeSelectStyle(judgeEl, mode);
+}
+// 판단 드롭다운 자체는 글씨를 항상 검은색으로 유지(옵션 목록 가독성 때문).
+// 그런데 우주상향은 배경이 어두운 사진이라 검은 글씨가 묻혀 안 보이므로,
+// 드롭다운 칸만 옅은 라벤더 배경으로 바꿔서 검은 글씨가 보이게 함(다른 칸은 그대로 우주 배경 유지).
+function fixJudgeSelectStyle(judgeEl, mode) {
+  if (mode === 'space') {
+    judgeEl.style.backgroundImage = '';
+    judgeEl.style.backgroundColor = '#EDE3FA';
+  }
+  judgeEl.style.color = mode ? '#333' : '';
 }
 function colorAllJudgeRows(scope) {
   (scope || document).querySelectorAll('[data-key="judge"]').forEach(applyJudgeRowColor);
