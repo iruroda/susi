@@ -2404,10 +2404,12 @@ function renderCell(f, value, attrs) {
   if (f.type === 'selectText') {
     // 아이폰(iOS)에서도 열리도록 네이티브 <select> 사용
     const allowCustom = (f.key === 'type');   // 전형유형만 직접 입력 허용
-    let opts = '<option value="">선택</option>';
-    f.options.forEach(o => opts += `<option value="${esc(o)}" ${v === o ? 'selected' : ''}>${esc(o)}</option>`);
-    if (v && !f.options.includes(v)) opts += `<option value="${esc(v)}" selected>${esc(v)}</option>`;  // 기존 직접입력값 유지
-    if (allowCustom) opts += '<option value="__custom">직접 입력…</option>';
+    // 옵션(펼쳤을 때 목록)은 칸 색과 상관없이 항상 흰 바탕/검은 글씨로 고정
+    const OPT_STYLE = 'style="color:#000;background:#fff"';
+    let opts = `<option value="" ${OPT_STYLE}>선택</option>`;
+    f.options.forEach(o => opts += `<option value="${esc(o)}" ${OPT_STYLE} ${v === o ? 'selected' : ''}>${esc(o)}</option>`);
+    if (v && !f.options.includes(v)) opts += `<option value="${esc(v)}" ${OPT_STYLE} selected>${esc(v)}</option>`;  // 기존 직접입력값 유지
+    if (allowCustom) opts += `<option value="__custom" ${OPT_STYLE}>직접 입력…</option>`;
     const handler = allowCustom ? 'selectTextChange(this)' : 'cellChange(this)';
     return `<select class="cell-input" ${attrs} ${style} onchange="${handler}">${opts}</select>`;
   }
