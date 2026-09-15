@@ -1777,21 +1777,20 @@ function selectView(v) {
   document.getElementById('view-cheer').style.display      = v === 'cheer'      ? 'block' : 'none';
   document.getElementById('view-cheeradmin').style.display = v === 'cheeradmin' ? 'block' : 'none';
   document.getElementById('view-pwreset').style.display = v === 'pwreset' ? 'block' : 'none';
-  document.getElementById('class-submenu').classList.toggle('open', v === 'status');
-  document.getElementById('collect-submenu').classList.toggle('open', v === 'collect');
-  updateStatusChevron();
-  updateCollectChevron();
   refreshAdmin();
 }
 
+// 두 하위메뉴(학급별/모아보기 종류)는 서로 독립적으로 열고 닫힘 — 한쪽을 열어도 다른 쪽이 저절로 접히지 않음.
 function toggleStatusMenu() {
-  if (currentView !== 'status') { selectView('status'); return; }
-  document.getElementById('class-submenu').classList.toggle('open');
+  const sub = document.getElementById('class-submenu');
+  if (currentView !== 'status') { selectView('status'); sub.classList.add('open'); }
+  else { sub.classList.toggle('open'); }
   updateStatusChevron();
 }
 function toggleCollectMenu() {
-  if (currentView !== 'collect') { selectView('collect'); return; }
-  document.getElementById('collect-submenu').classList.toggle('open');
+  const sub = document.getElementById('collect-submenu');
+  if (currentView !== 'collect') { selectView('collect'); sub.classList.add('open'); }
+  else { sub.classList.toggle('open'); }
   updateCollectChevron();
 }
 function updateStatusChevron() {
