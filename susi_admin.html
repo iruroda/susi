@@ -165,6 +165,8 @@
   .save-row { display: flex; align-items: center; gap: 14px; margin-top: 16px; }
   .save-msg { font-size: 13px; color: var(--success); font-weight: 500; opacity: 0; transition: opacity 0.3s; }
   .save-msg.show { opacity: 1; }
+  .save-msg.err { color: var(--danger); }
+  .btn-save:disabled { opacity: 0.6; cursor: default; }
   .count-badge { font-size: 12px; background: var(--primary); color: #fff; padding: 2px 8px; border-radius: 20px; font-weight: 600; }
 
   /* ── PW CHANGE MODAL ── */
@@ -786,7 +788,7 @@
       <div id="apps-list"></div>
       <button class="btn-add" id="btn-add" onclick="addRow()">+ 학교 추가</button>
       <div class="save-row">
-        <button class="btn-save" onclick="saveData()">저장하기</button>
+        <button class="btn-save" id="btn-save-data" onclick="saveData()">저장하기</button>
         <span class="save-msg" id="save-msg">✓ 저장되었습니다</span>
       </div>
     </div>
@@ -1287,19 +1289,34 @@ function accountPayload(uid) {
 }
 // 명시적 저장은 즉시 반영 — 동시에 일어난 호출만 마이크로태스크로 묶어 중복 쓰기 방지.
 // (지연 저장이면 저장 직후 새로고침 시 서버에 안 올라가 '저장 전'으로 돌아가는 문제가 생김)
+// saveAccount(uid)는 실제 서버 쓰기가 끝날 때(성공/실패) 결정되는 Promise를 반환한다 —
+// 호출부에서 "저장되었습니다"를 진짜 저장 성공 후에만 띄우기 위함 (예전엔 무조건 즉시 띄웠음).
 const _accDirty = new Set();
 let _accFlushing = false;
+let _accWaiters = [];
+window.__pendingSaves = 0;   // 저장 중 탭을 닫으면 유실될 수 있어 beforeunload 경고에 사용
 function saveAccount(uid) {
   cacheStoreSoon();
-  if (!window.fb) return;
+  if (!window.fb) return Promise.resolve();
   _accDirty.add(uid);
-  if (_accFlushing) return;
+  window.__pendingSaves++;
+  const p = new Promise((resolve, reject) => _accWaiters.push({ uid, resolve, reject }));
+  const dec = () => { window.__pendingSaves = Math.max(0, window.__pendingSaves - 1); };
+  p.then(dec, dec);   // 성공/실패 둘 다에서 카운트 감소 + 미처리(unhandled) rejection 경고 방지
+  if (_accFlushing) return p;
   _accFlushing = true;
   Promise.resolve().then(() => {
     _accFlushing = false;
     const ids = [..._accDirty]; _accDirty.clear();
-    ids.forEach(u => window.fb.saveAccount(u, accountPayload(u)));
+    const waiters = _accWaiters; _accWaiters = [];
+    ids.forEach(u => {
+      window.fb.saveAccount(u, accountPayload(u)).then(
+        () => waiters.filter(w => w.uid === u).forEach(w => w.resolve()),
+        e  => waiters.filter(w => w.uid === u).forEach(w => w.reject(e))
+      );
+    });
   });
+  return p;
 }
 function saveConfig() {
   cacheStoreSoon();
@@ -1512,7 +1529,7 @@ function getApps(uid) {
   arr.forEach(r => { if (r && r.judge === '초상향') r.judge = '우주상향'; });
   return arr;
 }
-function setApps(uid, d) { STORE['apps_' + uid] = d; saveAccount(uid); }
+function setApps(uid, d) { STORE['apps_' + uid] = d; return saveAccount(uid); }
 function getPw(uid)      { const s = STORE['pw_' + uid]; if (s != null) return s; if (uid === 'admin') return 'admin1234'; if (USERS[uid] && USERS[uid].role === 'teacher') return '1234'; return uid; }
 function setPw(uid, pw)  { STORE['pw_' + uid] = pw; saveAccount(uid); }
 function resetPw(uid)    { delete STORE['pw_' + uid]; saveAccount(uid); }
@@ -1703,10 +1720,20 @@ function moveRow(i, dir) {
 }
 
 function saveData() {
-  setApps(currentUser.id, rows.filter(rowHasContent));
   const msg = document.getElementById('save-msg');
+  const btn = document.getElementById('btn-save-data');
+  msg.classList.remove('err');
+  msg.textContent = '저장 중...';
   msg.classList.add('show');
-  setTimeout(() => msg.classList.remove('show'), 2200);
+  if (btn) btn.disabled = true;
+  setApps(currentUser.id, rows.filter(rowHasContent)).then(() => {
+    msg.textContent = '✓ 저장되었습니다';
+    msg.classList.remove('err');
+    setTimeout(() => msg.classList.remove('show'), 2200);
+  }).catch(() => {
+    msg.textContent = '✗ 저장 실패 — 다시 눌러주세요 (인터넷 연결을 확인하세요)';
+    msg.classList.add('err');
+  }).finally(() => { if (btn) btn.disabled = false; });
 }
 
 // ── PW MODAL ──
@@ -2006,7 +2033,7 @@ function buildEditor(uid) {
   return `<div>${buildEntriesHtml(er, 'a', uid)}</div>
   <div style="display:flex;gap:10px;align-items:center;margin-top:10px;flex-wrap:wrap;">
     <button class="btn-add" style="width:auto;margin:0;padding:8px 16px;" onclick="adminAddRow('${uid}')">+ 학교 추가</button>
-    <button class="btn-save" style="padding:9px 22px;" onclick="adminSave('${uid}')">저장하기</button>
+    <button class="btn-save" id="btn-adminsave-${uid}" style="padding:9px 22px;" onclick="adminSave('${uid}')">저장하기</button>
     <span style="font-size:12px;color:var(--gray);">저장하기 버튼을 눌러야만 입력한 내용이 저장됩니다.</span>
     <span class="save-msg" id="adminsave-${uid}">✓ 저장되었습니다 (학생 화면에도 반영됨)</span>
   </div>`;
@@ -2044,12 +2071,22 @@ function adminMoveRow(uid, i, dir) {
 
 function adminSave(uid) {
   const data = getEditRows(uid).filter(rowHasContent);
-  setApps(uid, data);
-  adminRows[uid] = data.length ? data.map(r => ({ ...r })) : [{}];
-  updateRowBadge(uid);
-  updateClassCounts();
   const msg = document.getElementById('adminsave-' + uid);
-  if (msg) { msg.classList.add('show'); setTimeout(() => msg.classList.remove('show'), 2500); }
+  const btn = document.getElementById('btn-adminsave-' + uid);
+  if (msg) { msg.classList.remove('err'); msg.textContent = '저장 중...'; msg.classList.add('show'); }
+  if (btn) btn.disabled = true;
+  setApps(uid, data).then(() => {
+    adminRows[uid] = data.length ? data.map(r => ({ ...r })) : [{}];
+    updateRowBadge(uid);
+    updateClassCounts();
+    if (msg) {
+      msg.textContent = '✓ 저장되었습니다 (학생 화면에도 반영됨)';
+      msg.classList.remove('err');
+      setTimeout(() => msg.classList.remove('show'), 2500);
+    }
+  }).catch(() => {
+    if (msg) { msg.textContent = '✗ 저장 실패 — 다시 눌러주세요 (인터넷 연결을 확인하세요)'; msg.classList.add('err'); }
+  }).finally(() => { if (btn) btn.disabled = false; });
 }
 
 function studentFilled(uid) { return getApps(uid).filter(a => (a.school||'').trim()).length; }
@@ -2910,6 +2947,11 @@ document.addEventListener('keydown', e => {
 ['pointerdown', 'touchstart'].forEach(ev =>
   document.addEventListener(ev, () => { window.__lastEditTs = Date.now(); }, { passive: true, capture: true }));
 
+// 저장(서버 쓰기)이 아직 안 끝났는데 탭을 닫거나 새로고침하면 저장 안 된 채로 유실될 수 있어 경고
+window.addEventListener('beforeunload', function (e) {
+  if (window.__pendingSaves > 0) { e.preventDefault(); e.returnValue = ''; return ''; }
+});
+
 // 우클릭(컨텍스트 메뉴) 전체 비활성화
 document.addEventListener('contextmenu', function (e) { e.preventDefault(); });
 </script>
@@ -2945,7 +2987,7 @@ document.addEventListener('contextmenu', function (e) { e.preventDefault(); });
     // 전체 계정 1회 스냅샷 조회(실시간 구독 아님) — 학급 교사가 다른 반 현황을 가끔 새로고침할 때 사용
     getAllAccounts: () => getDocs(accCol).then(snap => { const out = {}; snap.forEach(d => out[d.id] = d.data()); return out; }).catch(e => { console.warn('전체 계정 조회 실패', e); return null; }),
     // 쓰기
-    saveAccount: (uid, data) => setDoc(accDoc(uid), clean(data)).catch(e => console.warn('계정 저장 실패', e)),
+    saveAccount: (uid, data) => setDoc(accDoc(uid), clean(data)).catch(e => { console.warn('계정 저장 실패', e); throw e; }),
     deleteAccount: uid => deleteDoc(accDoc(uid)).catch(e => console.warn('계정 삭제 실패', e)),
     saveShared:  (id, data)  => setDoc(shDoc(id), clean(data)).catch(e => console.warn('shared 저장 실패', e)),
     mergeShared: (id, data)  => setDoc(shDoc(id), clean(data), { merge: true }).catch(e => console.warn('shared 병합 실패', e)),
