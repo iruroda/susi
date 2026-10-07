@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>수시지원 관리 — 3학년</title>
+<link rel="icon" type="image/x-icon" href="favicon.ico">
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -723,16 +724,23 @@
     .pw-modal-footer { gap: 6px; }
     .pw-modal-footer button { padding: 9px 12px; font-size: 13px; }
   }
+
+  /* ── 아이콘 (선+단색 SVG) ── */
+  .ic { width: 1.15em; height: 1.15em; vertical-align: -0.2em; fill: none; stroke: currentColor; stroke-width: 1.9; stroke-linecap: round; stroke-linejoin: round; flex-shrink: 0; }
+  .ic-logo { width: 1.4em; height: 1.4em; vertical-align: -0.3em; stroke: none; }
+  .si-search { padding-left: 32px !important; background-repeat: no-repeat !important; background-position: 10px center !important; background-size: 15px !important;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23868e96' stroke-width='2' stroke-linecap='round'%3E%3Ccircle cx='11' cy='11' r='7'/%3E%3Cpath d='M20 20l-4-4'/%3E%3C/svg%3E") !important; }
 </style>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="susi_db.js"></script>
 </head>
 <body>
+<svg xmlns="http://www.w3.org/2000/svg" style="display:none" aria-hidden="true"><symbol id="i-logo" viewBox="0 0 100 100"><rect width="100" height="100" rx="14" fill="#10223a"/><g fill="#fff"><path d="M18.1 36.44H26.96Q27.15 38.34 28.27 39.33Q29.39 40.33 31.19 40.33Q33.04 40.33 34.12 39.48Q35.19 38.63 35.19 37.12Q35.19 35.85 34.33 35.03Q33.48 34.2 32.24 33.66Q31 33.13 28.71 32.45Q25.4 31.42 23.31 30.4Q21.22 29.38 19.71 27.38Q18.2 25.39 18.2 22.17Q18.2 17.4 21.65 14.7Q25.11 12 30.66 12Q36.31 12 39.76 14.7Q43.22 17.4 43.46 22.22H34.46Q34.36 20.57 33.24 19.62Q32.12 18.67 30.37 18.67Q28.86 18.67 27.93 19.47Q27.01 20.28 27.01 21.78Q27.01 23.44 28.57 24.36Q30.12 25.29 33.43 26.36Q36.74 27.48 38.81 28.5Q40.88 29.52 42.39 31.47Q43.9 33.42 43.9 36.49Q43.9 39.41 42.42 41.79Q40.93 44.18 38.11 45.59Q35.28 47 31.44 47Q27.69 47 24.72 45.78Q21.75 44.57 19.97 42.18Q18.2 39.8 18.1 36.44Z"/><path d="M62.93 12V32.73Q62.93 35.84 64.46 37.52Q65.99 39.2 68.95 39.2Q71.91 39.2 73.49 37.52Q75.07 35.84 75.07 32.73V12H83.51V32.68Q83.51 37.32 81.54 40.53Q79.56 43.74 76.23 45.37Q72.9 47 68.8 47Q64.71 47 61.47 45.4Q58.24 43.79 56.36 40.56Q54.49 37.32 54.49 32.68V12Z"/><path d="M18.1 77.44H26.96Q27.15 79.34 28.27 80.33Q29.39 81.33 31.19 81.33Q33.04 81.33 34.12 80.48Q35.19 79.63 35.19 78.12Q35.19 76.85 34.33 76.03Q33.48 75.2 32.24 74.66Q31 74.13 28.71 73.45Q25.4 72.42 23.31 71.4Q21.22 70.38 19.71 68.38Q18.2 66.39 18.2 63.17Q18.2 58.4 21.65 55.7Q25.11 53 30.66 53Q36.31 53 39.76 55.7Q43.22 58.4 43.46 63.22H34.46Q34.36 61.57 33.24 60.62Q32.12 59.67 30.37 59.67Q28.86 59.67 27.93 60.47Q27.01 61.28 27.01 62.78Q27.01 64.44 28.57 65.36Q30.12 66.29 33.43 67.36Q36.74 68.48 38.81 69.5Q40.88 70.52 42.39 72.47Q43.9 74.42 43.9 77.49Q43.9 80.41 42.42 82.79Q40.93 85.18 38.11 86.59Q35.28 88 31.44 88Q27.69 88 24.72 86.78Q21.75 85.57 19.97 83.18Q18.2 80.8 18.1 77.44Z"/><path d="M73.26 53V88H64.74V53Z"/></g></symbol><symbol id="i-coin" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M14.5 9.5c-.5-1-1.4-1.5-2.5-1.5-1.5 0-2.5.8-2.5 2s1 1.7 2.5 2 2.5.8 2.5 2-1 2-2.5 2c-1.1 0-2-.5-2.5-1.5M12 6.5V8M12 16v1.5"/></symbol><symbol id="i-palette" viewBox="0 0 24 24"><path d="M12 3a9 9 0 100 18c1.2 0 2-.8 2-1.8 0-.5-.2-.9-.5-1.2-.3-.3-.5-.7-.5-1.2 0-1 .8-1.8 1.8-1.8H17a4 4 0 004-4c0-4.4-4-8-9-8z"/><circle cx="7.5" cy="11" r=".8"/><circle cx="10" cy="7" r=".8"/><circle cx="15" cy="7.5" r=".8"/></symbol><symbol id="i-key" viewBox="0 0 24 24"><circle cx="8" cy="15" r="4"/><path d="M11 12l9-9M16 7l3 3M14 9l2 2"/></symbol><symbol id="i-school" viewBox="0 0 24 24"><path d="M3 21h18M5 21V9l7-5 7 5v12M10 21v-5h4v5"/></symbol><symbol id="i-heart" viewBox="0 0 24 24"><path d="M12 20s-7-4.5-7-10a4 4 0 017-2.5A4 4 0 0119 10c0 5.5-7 10-7 10z"/></symbol><symbol id="i-link" viewBox="0 0 24 24"><path d="M10 14a4 4 0 005.7 0l3-3a4 4 0 00-5.7-5.7l-1 1M14 10a4 4 0 00-5.7 0l-3 3a4 4 0 005.7 5.7l1-1"/></symbol><symbol id="i-chart" viewBox="0 0 24 24"><path d="M4 20V4M4 20h16M8 16v-5M12 16V8M16 16v-3"/></symbol><symbol id="i-edit" viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="2"/><path d="M8 16l.5-3L15 6.5 17.5 9 11 15.5 8 16z"/></symbol><symbol id="i-teacher" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 4-6 8-6s8 2 8 6"/></symbol><symbol id="i-trophy" viewBox="0 0 24 24"><path d="M8 4h8v6a4 4 0 01-8 0V4zM8 6H4v2a3 3 0 003 3M16 6h4v2a3 3 0 01-3 3M12 14v4M8 20h8"/></symbol><symbol id="i-cap" viewBox="0 0 24 24"><path d="M2 9l10-5 10 5-10 5L2 9zM6 11.5V16c0 1.5 2.7 3 6 3s6-1.5 6-3v-4.5M22 9v6"/></symbol><symbol id="i-wrench" viewBox="0 0 24 24"><path d="M15 4a5 5 0 00-4.5 6.7L4 17.2 6.8 20l6.5-6.5A5 5 0 0020 9l-3 3-3-1-1-3 3-3z"/></symbol><symbol id="i-eye" viewBox="0 0 24 24"><path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></symbol><symbol id="i-volon" viewBox="0 0 24 24"><path d="M4 9v6h4l5 4V5L8 9H4zM16.5 8.5a5 5 0 010 7M19 6a8.5 8.5 0 010 12"/></symbol><symbol id="i-voloff" viewBox="0 0 24 24"><path d="M4 9v6h4l5 4V5L8 9H4zM17 9l5 6M22 9l-5 6"/></symbol></svg>
 
 <!-- ── LOGIN ── -->
 <div id="login-page">
   <div class="login-card">
-    <div class="login-title">📋 청주여고 3학년 수시지원 관리</div>
+    <div class="login-title"><svg class="ic ic-logo"><use href="#i-logo"/></svg> 청주여고 3학년 수시지원 관리</div>
     <img class="login-img" src="login.png" alt="몬스터볼에서 합격이 나왔다">
     <div class="form-group">
       <label>아이디 (학번)</label>
@@ -756,7 +764,7 @@
 <div class="page" id="student-page">
   <div class="topbar">
     <div class="topbar-left">
-      <div class="topbar-title">📋 수시지원 관리</div>
+      <div class="topbar-title"><svg class="ic ic-logo"><use href="#i-logo"/></svg> 수시지원 관리</div>
       <img class="skin-mascot mascot-pika" src="pikachu1.png" alt="">
       <img class="skin-mascot mascot-rija" src="rijamong1.png" alt="">
       <img class="skin-mascot mascot-blue" src="kkobugi1.png" alt="">
@@ -769,16 +777,16 @@
     <div class="topbar-cheer" id="topbar-cheer" style="display:none"></div>
     <div class="topbar-user">
       <span id="st-username"></span>
-      <span class="coin-display">🪙 <span class="coin-amt">0</span>G</span>
-      <button class="btn-skin" onclick="openSkinModal()">🎨 스킨 변경</button>
-      <button class="btn-pw-change" onclick="openPwModal()">🔑 비밀번호 변경</button>
+      <span class="coin-display"><svg class="ic"><use href="#i-coin"/></svg> <span class="coin-amt">0</span>G</span>
+      <button class="btn-skin" onclick="openSkinModal()"><svg class="ic"><use href="#i-palette"/></svg> 스킨 변경</button>
+      <button class="btn-pw-change" onclick="openPwModal()"><svg class="ic"><use href="#i-key"/></svg> 비밀번호 변경</button>
       <button class="btn-logout" onclick="doLogout()">로그아웃</button>
     </div>
   </div>
   <div class="main">
     <div class="card">
       <div class="card-title" style="justify-content:space-between;flex-wrap:wrap;gap:10px;">
-        <span>🏫 지원 학교 입력 <span style="font-size:12px;font-weight:400;color:var(--gray)">— 입력 후 저장하기 버튼을 누르세요</span></span>
+        <span><svg class="ic"><use href="#i-school"/></svg> 지원 학교 입력 <span style="font-size:12px;font-weight:400;color:var(--gray)">— 입력 후 저장하기 버튼을 누르세요</span></span>
         <div class="layout-toggle" style="margin:0;">
           <span class="layout-lbl">입력칸 보기</span>
           <button class="layout-btn" data-mode="card" onclick="setEntryLayout('card')">줄바꿈</button>
@@ -793,7 +801,7 @@
       </div>
     </div>
     <div class="card" style="margin-top:14px;">
-      <div class="card-title">💌 응원하기 <span style="font-size:12px;font-weight:400;color:var(--gray)">— 20자 이내로 남기면 상단 제목바에 랜덤으로 표시돼요</span></div>
+      <div class="card-title"><svg class="ic"><use href="#i-heart"/></svg> 응원하기 <span style="font-size:12px;font-weight:400;color:var(--gray)">— 20자 이내로 남기면 상단 제목바에 랜덤으로 표시돼요</span></div>
       <div class="cheer-editor">
         <input class="search-input" id="cheer-input" maxlength="20" placeholder="예) 모두 원하는 대학 합격 기원!" oninput="updateCheerCounts()" onkeydown="if(event.key==='Enter')saveCheerFrom('cheer-input','cheer-msg')">
         <span class="cheer-count"><b id="cheer-count">0</b>/20</span>
@@ -802,7 +810,7 @@
       </div>
     </div>
     <div class="card" style="margin-top:14px;">
-      <div class="card-title">🔗 바로가기</div>
+      <div class="card-title"><svg class="ic"><use href="#i-link"/></svg> 바로가기</div>
       <div class="shortcut-row">
         <a class="shortcut-box" href="https://www.adiga.kr/" target="_blank" rel="noopener">
           <img src="adiga_logo.png" alt="대입정보포털 로고">
@@ -817,7 +825,7 @@
 <div class="page" id="admin-page">
   <div class="topbar">
     <div class="topbar-left">
-      <div class="topbar-title">📋 청주여고 3학년 수시지원 관리</div>
+      <div class="topbar-title"><svg class="ic ic-logo"><use href="#i-logo"/></svg> 청주여고 3학년 수시지원 관리</div>
       <img class="skin-mascot mascot-pika" src="pikachu1.png" alt="">
       <img class="skin-mascot mascot-rija" src="rijamong1.png" alt="">
       <img class="skin-mascot mascot-blue" src="kkobugi1.png" alt="">
@@ -830,16 +838,16 @@
     <div class="topbar-cheer" id="topbar-cheer-admin" style="display:none"></div>
     <div class="topbar-user">
       <span id="admin-username">관리자</span>
-      <span class="coin-display">🪙 <span class="coin-amt">0</span>G</span>
-      <button class="btn-skin" onclick="openSkinModal()">🎨 스킨 변경</button>
-      <button class="btn-pw-change" onclick="openPwModal()">🔑 비밀번호 변경</button>
+      <span class="coin-display"><svg class="ic"><use href="#i-coin"/></svg> <span class="coin-amt">0</span>G</span>
+      <button class="btn-skin" onclick="openSkinModal()"><svg class="ic"><use href="#i-palette"/></svg> 스킨 변경</button>
+      <button class="btn-pw-change" onclick="openPwModal()"><svg class="ic"><use href="#i-key"/></svg> 비밀번호 변경</button>
       <button class="btn-logout" onclick="doLogout()">로그아웃</button>
     </div>
   </div>
 
   <div class="admin-body">
     <div class="sidebar">
-      <button class="sidebar-btn nav-btn active" id="nav-status"  onclick="toggleStatusMenu()">📋 입력 및 수정 <span class="menu-chevron" id="status-chevron">▾</span></button>
+      <button class="sidebar-btn nav-btn active" id="nav-status"  onclick="toggleStatusMenu()"><svg class="ic"><use href="#i-edit"/></svg> 입력 및 수정 <span class="menu-chevron" id="status-chevron">▾</span></button>
       <div class="submenu open" id="class-submenu">
         <button class="sidebar-btn cls-btn active" id="cls-btn-0"  onclick="selectClass(0)">전체</button>
         <button class="sidebar-btn cls-btn" id="cls-btn-1"  onclick="selectClass(1)">1반</button>
@@ -855,20 +863,20 @@
         <button class="sidebar-btn cls-btn" id="cls-btn-80" onclick="selectClass(80)">졸업생</button>
       </div>
       <div class="sidebar-divider"></div>
-      <button class="sidebar-btn nav-btn" id="nav-collect" onclick="toggleCollectMenu()">📊 모아보기 <span class="menu-chevron" id="collect-chevron">▸</span></button>
+      <button class="sidebar-btn nav-btn" id="nav-collect" onclick="toggleCollectMenu()"><svg class="ic"><use href="#i-chart"/></svg> 모아보기 <span class="menu-chevron" id="collect-chevron">▸</span></button>
       <div class="submenu" id="collect-submenu">
         <button class="sidebar-btn col-btn active" id="col-class"     onclick="selectCollect('class')">학급별</button>
         <button class="sidebar-btn col-btn"        id="col-univ"      onclick="selectCollect('univ')">대학별</button>
         <button class="sidebar-btn col-btn"        id="col-recommend" onclick="selectCollect('recommend')">추천전형</button>
       </div>
       <div class="sidebar-divider"></div>
-      <button class="sidebar-btn nav-btn" id="nav-cheer" onclick="selectView('cheer')">💌 응원하기</button>
+      <button class="sidebar-btn nav-btn" id="nav-cheer" onclick="selectView('cheer')"><svg class="ic"><use href="#i-heart"/></svg> 응원하기</button>
       <div class="sidebar-divider"></div>
-      <button class="sidebar-btn nav-btn" id="nav-teacher" onclick="selectView('teacher')">👩‍🏫 교사 설정</button>
-      <button class="sidebar-btn nav-btn" id="nav-gold" onclick="selectView('gold')">🪙 골드 및 스킨</button>
-      <button class="sidebar-btn nav-btn" id="nav-rank" onclick="selectView('rank')">🏆 랭킹 관리</button>
-      <button class="sidebar-btn nav-btn" id="nav-cheeradmin" onclick="selectView('cheeradmin')">💌 응원 관리</button>
-      <button class="sidebar-btn nav-btn" id="nav-pwreset" onclick="selectView('pwreset')">🔑 비밀번호 관리</button>
+      <button class="sidebar-btn nav-btn" id="nav-teacher" onclick="selectView('teacher')"><svg class="ic"><use href="#i-teacher"/></svg> 교사 설정</button>
+      <button class="sidebar-btn nav-btn" id="nav-gold" onclick="selectView('gold')"><svg class="ic"><use href="#i-coin"/></svg> 골드 및 스킨</button>
+      <button class="sidebar-btn nav-btn" id="nav-rank" onclick="selectView('rank')"><svg class="ic"><use href="#i-trophy"/></svg> 랭킹 관리</button>
+      <button class="sidebar-btn nav-btn" id="nav-cheeradmin" onclick="selectView('cheeradmin')"><svg class="ic"><use href="#i-heart"/></svg> 응원 관리</button>
+      <button class="sidebar-btn nav-btn" id="nav-pwreset" onclick="selectView('pwreset')"><svg class="ic"><use href="#i-key"/></svg> 비밀번호 관리</button>
     </div>
 
     <div class="admin-main">
@@ -877,7 +885,7 @@
         <div id="grad-add-bar" style="display:none">
           <div class="card" style="padding:14px 18px;margin-bottom:14px;">
             <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
-              <strong style="font-size:14px;">🎓 졸업생 추가</strong>
+              <strong style="font-size:14px;"><svg class="ic"><use href="#i-cap"/></svg> 졸업생 추가</strong>
               <input id="grad-name" class="search-input" style="flex:1;min-width:160px;" placeholder="졸업생 이름 입력 후 추가" onkeydown="if(event.key==='Enter')addGraduate()">
               <button class="btn-save" style="padding:9px 20px;" onclick="addGraduate()">추가</button>
             </div>
@@ -893,14 +901,14 @@
           </div>
           <div class="card toolbar-box toolbar-grow">
             <div class="filter-row">
-              <input class="search-input" id="search-input" placeholder="🔍 이름/학번" oninput="renderAdmin()">
+              <input class="search-input si-search" id="search-input" placeholder="이름/학번" oninput="renderAdmin()">
               <button class="filter-btn active" id="f-all"  onclick="setFilter('all')">전체</button>
               <button class="filter-btn"        id="f-done" onclick="setFilter('done')">입력완료</button>
               <button class="filter-btn"        id="f-none" onclick="setFilter('none')">미입력</button>
             </div>
           </div>
           <div class="card toolbar-box">
-            <button class="btn-excel" style="margin:0;" onclick="openExcelModal()">📊 엑셀로 저장</button>
+            <button class="btn-excel" style="margin:0;" onclick="openExcelModal()"><svg class="ic"><use href="#i-chart"/></svg> 엑셀로 저장</button>
           </div>
         </div>
 
@@ -912,11 +920,11 @@
         <div class="toolbar-row">
           <div class="card toolbar-box toolbar-grow">
             <div class="filter-row">
-              <input class="search-input" id="collect-search" placeholder="🔍 이름/학번" oninput="renderCollect()">
+              <input class="search-input si-search" id="collect-search" placeholder="이름/학번" oninput="renderCollect()">
             </div>
           </div>
           <div class="card toolbar-box">
-            <button class="btn-excel" style="margin:0;" onclick="openExcelModal()">📊 엑셀로 저장</button>
+            <button class="btn-excel" style="margin:0;" onclick="openExcelModal()"><svg class="ic"><use href="#i-chart"/></svg> 엑셀로 저장</button>
           </div>
         </div>
         <div id="collect-list"></div>
@@ -926,14 +934,14 @@
       <div id="view-teacher" style="display:none">
         <div class="card" style="padding:14px 20px;margin-bottom:14px;border:1px solid #ffd8a8;background:#fff9f0;">
           <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
-            <strong style="font-size:14px;">🔧 데이터 구조 이전(1회)</strong>
+            <strong style="font-size:14px;"><svg class="ic"><use href="#i-wrench"/></svg> 데이터 구조 이전(1회)</strong>
             <button class="btn-save" style="padding:8px 16px;" onclick="migrateFromOld()">기존 데이터 → 새 구조로 이전</button>
             <span id="mig-status" style="font-size:13px;color:var(--gray);"></span>
           </div>
           <div style="font-size:12px;color:var(--gray);margin-top:6px;">최초 1회만 실행하세요. 기존 <code>state/all</code> 문서를 학생별 문서와 공유 문서로 복사합니다(기존 문서는 백업으로 남습니다).</div>
         </div>
         <div class="card" style="padding:18px 20px;margin-bottom:14px;">
-          <div class="card-title">👩‍🏫 교사 추가</div>
+          <div class="card-title"><svg class="ic"><use href="#i-teacher"/></svg> 교사 추가</div>
           <div class="teacher-form">
             <input class="search-input" id="t-id" placeholder="아이디">
             <input class="search-input" id="t-name" placeholder="이름">
@@ -958,7 +966,7 @@
       <div id="view-gold" style="display:none">
         <div class="card" style="padding:16px 20px;margin-bottom:14px;">
           <div class="filter-row">
-            <input class="search-input" id="gold-search" placeholder="🔍 이름 또는 학번 검색..." oninput="renderGold()">
+            <input class="search-input si-search" id="gold-search" placeholder="이름 또는 학번 검색..." oninput="renderGold()">
           </div>
           <div style="font-size:12px;color:var(--gray);margin-top:4px;">학생의 골드량을 직접 입력해 조정합니다.</div>
         </div>
@@ -969,7 +977,7 @@
       <div id="view-rank" style="display:none">
         <div class="card" style="padding:16px 20px;margin-bottom:14px;">
           <div class="filter-row">
-            <input class="search-input" id="rank-search" placeholder="🔍 이름 또는 학번 검색..." oninput="renderRankAdmin()">
+            <input class="search-input si-search" id="rank-search" placeholder="이름 또는 학번 검색..." oninput="renderRankAdmin()">
           </div>
           <div style="font-size:12px;color:var(--gray);margin-top:4px;">피카피카썬더! 랭킹의 사용자별 최고 기록(초)을 직접 수정하거나, 기록을 삭제해 랭킹에서 제외합니다.</div>
         </div>
@@ -979,7 +987,7 @@
       <!-- VIEW: 응원하기 (본인 메시지 작성) -->
       <div id="view-cheer" style="display:none">
         <div class="card" style="padding:18px 20px;">
-          <div class="card-title">💌 응원하기 <span style="font-size:12px;font-weight:400;color:var(--gray)">— 20자 이내로 남기면 상단 제목바에 랜덤으로 표시돼요</span></div>
+          <div class="card-title"><svg class="ic"><use href="#i-heart"/></svg> 응원하기 <span style="font-size:12px;font-weight:400;color:var(--gray)">— 20자 이내로 남기면 상단 제목바에 랜덤으로 표시돼요</span></div>
           <div class="cheer-editor">
             <input class="search-input" id="cheer-input-t" maxlength="20" placeholder="예) 우리 반 모두 파이팅!" oninput="updateCheerCounts()" onkeydown="if(event.key==='Enter')saveCheerFrom('cheer-input-t','cheer-msg-t')">
             <span class="cheer-count"><b id="cheer-count-t">0</b>/20</span>
@@ -993,7 +1001,7 @@
       <div id="view-cheeradmin" style="display:none">
         <div class="card" style="padding:16px 20px;margin-bottom:14px;">
           <div class="filter-row">
-            <input class="search-input" id="cheer-admin-search" placeholder="🔍 이름/학번/내용 검색..." oninput="renderCheerAdmin()">
+            <input class="search-input si-search" id="cheer-admin-search" placeholder="이름/학번/내용 검색..." oninput="renderCheerAdmin()">
           </div>
           <div style="font-size:12px;color:var(--gray);margin-top:4px;">학생·교사가 남긴 응원 메시지를 수정하거나 삭제합니다.</div>
         </div>
@@ -1004,7 +1012,7 @@
       <div id="view-pwreset" style="display:none">
         <div class="card" style="padding:16px 20px;margin-bottom:14px;">
           <div class="filter-row">
-            <input class="search-input" id="pw-search-input" placeholder="🔍 이름 또는 학번 검색..." oninput="renderPwReset()">
+            <input class="search-input si-search" id="pw-search-input" placeholder="이름 또는 학번 검색..." oninput="renderPwReset()">
           </div>
           <div style="font-size:12px;color:var(--gray);margin-top:4px;">학생을 선택해 비밀번호를 학번으로 초기화합니다.</div>
         </div>
@@ -1017,7 +1025,7 @@
 <!-- ── PW CHANGE MODAL ── -->
 <div class="pw-modal-bg" id="pw-modal-bg">
   <div class="pw-modal">
-    <h3>🔑 비밀번호 변경</h3>
+    <h3><svg class="ic"><use href="#i-key"/></svg> 비밀번호 변경</h3>
     <div class="pw-field">
       <label>현재 비밀번호</label>
       <input type="password" id="pw-current" placeholder="현재 비밀번호">
@@ -1041,7 +1049,7 @@
 <!-- ── SKIN MODAL ── -->
 <div class="pw-modal-bg" id="skin-modal-bg">
   <div class="pw-modal">
-    <h3>🎨 스킨 변경</h3>
+    <h3><svg class="ic"><use href="#i-palette"/></svg> 스킨 변경</h3>
     <div class="skin-options">
       <button class="skin-option" id="skin-opt-light" onclick="applySkin('light')">
         <span class="skin-swatch swatch-light"></span>
@@ -1057,54 +1065,54 @@
         <span class="skin-swatch swatch-pika"></span>
         <span class="skin-name">옐로</span>
         <span class="skin-check">✓</span>
-        <span class="skin-price" id="price-pika">🪙100G</span>
+        <span class="skin-price" id="price-pika"><svg class="ic"><use href="#i-coin"/></svg>100G</span>
       </button>
       <button class="skin-option" id="skin-opt-rija" onclick="applySkin('rija')">
         <span class="skin-swatch swatch-rija"></span>
         <span class="skin-name">레드</span>
         <span class="skin-check">✓</span>
-        <span class="skin-price" id="price-rija">🪙100G</span>
+        <span class="skin-price" id="price-rija"><svg class="ic"><use href="#i-coin"/></svg>100G</span>
       </button>
       <button class="skin-option" id="skin-opt-blue" onclick="applySkin('blue')">
         <span class="skin-swatch swatch-blue"></span>
         <span class="skin-name">블루</span>
         <span class="skin-check">✓</span>
-        <span class="skin-price" id="price-blue">🪙100G</span>
+        <span class="skin-price" id="price-blue"><svg class="ic"><use href="#i-coin"/></svg>100G</span>
       </button>
       <button class="skin-option" id="skin-opt-lavender" onclick="applySkin('lavender')">
         <span class="skin-swatch swatch-lavender"></span>
         <span class="skin-name">라벤더</span>
         <span class="skin-check">✓</span>
-        <span class="skin-price" id="price-lavender">🪙100G</span>
+        <span class="skin-price" id="price-lavender"><svg class="ic"><use href="#i-coin"/></svg>100G</span>
       </button>
       <button class="skin-option" id="skin-opt-mint" onclick="applySkin('mint')">
         <span class="skin-swatch swatch-mint"></span>
         <span class="skin-name">민트</span>
         <span class="skin-check">✓</span>
-        <span class="skin-price" id="price-mint">🪙100G</span>
+        <span class="skin-price" id="price-mint"><svg class="ic"><use href="#i-coin"/></svg>100G</span>
       </button>
       <button class="skin-option" id="skin-opt-beige" onclick="applySkin('beige')">
         <span class="skin-swatch swatch-beige"></span>
         <span class="skin-name">베이지</span>
         <span class="skin-check">✓</span>
-        <span class="skin-price" id="price-beige">🪙100G</span>
+        <span class="skin-price" id="price-beige"><svg class="ic"><use href="#i-coin"/></svg>100G</span>
       </button>
       <button class="skin-option" id="skin-opt-white2" onclick="applySkin('white2')">
         <span class="skin-swatch swatch-white2"></span>
         <span class="skin-name">모노</span>
         <span class="skin-check">✓</span>
-        <span class="skin-price" id="price-white2">🪙100G</span>
+        <span class="skin-price" id="price-white2"><svg class="ic"><use href="#i-coin"/></svg>100G</span>
       </button>
       <button class="skin-option" id="skin-opt-lemon" onclick="applySkin('lemon')">
         <span class="skin-swatch swatch-lemon"></span>
         <span class="skin-name">레몬</span>
         <span class="skin-check">✓</span>
-        <span class="skin-price" id="price-lemon">🪙100G</span>
+        <span class="skin-price" id="price-lemon"><svg class="ic"><use href="#i-coin"/></svg>100G</span>
       </button>
     </div>
     <div class="pw-msg" id="skin-msg"></div>
     <div class="pw-modal-footer">
-      <button class="btn-modal-ok" onclick="openGameModal()">🪙 충전</button>
+      <button class="btn-modal-ok" onclick="openGameModal()"><svg class="ic"><use href="#i-coin"/></svg> 충전</button>
       <button class="btn-modal-cancel" onclick="closeSkinModal()">닫기</button>
     </div>
   </div>
@@ -1115,8 +1123,8 @@
   <div class="pw-modal" style="max-width:540px;padding:16px;">
     <iframe id="game-frame" title="몬스터볼 피하기" style="width:100%;aspect-ratio:1/1.2;border:none;border-radius:10px;display:block;background:transparent;"></iframe>
     <div class="pw-modal-footer">
-      <button class="btn-modal-cancel" id="game-sound-btn" onclick="toggleGameSound()">🔇 Off</button>
-      <button class="btn-modal-cancel" onclick="openRankModal()">🏆 랭킹 확인</button>
+      <button class="btn-modal-cancel" id="game-sound-btn" onclick="toggleGameSound()"><svg class="ic"><use href="#i-voloff"/></svg> Off</button>
+      <button class="btn-modal-cancel" onclick="openRankModal()"><svg class="ic"><use href="#i-trophy"/></svg> 랭킹 확인</button>
       <button class="btn-modal-cancel" onclick="closeGameModal()">닫기</button>
     </div>
   </div>
@@ -1125,7 +1133,7 @@
 <!-- ── RANK MODAL (랭킹) ── -->
 <div class="pw-modal-bg" id="rank-modal-bg">
   <div class="pw-modal" style="max-width:460px;">
-    <h3>🏆 피카피카썬더! 랭킹</h3>
+    <h3><svg class="ic"><use href="#i-trophy"/></svg> 피카피카썬더! 랭킹</h3>
     <div class="rank-cols">
       <div class="rank-col">
         <div class="rank-title">주간 랭킹 TOP 10</div>
@@ -1145,7 +1153,7 @@
 <!-- ── EXCEL EXPORT MODAL ── -->
 <div class="pw-modal-bg" id="excel-modal-bg">
   <div class="pw-modal">
-    <h3>📊 엑셀로 저장</h3>
+    <h3><svg class="ic"><use href="#i-chart"/></svg> 엑셀로 저장</h3>
     <div style="font-size:13px;color:var(--gray);margin-bottom:14px;">저장할 학급을 선택하세요.</div>
     <div class="excel-checks">
       <label class="excel-chk excel-all"><input type="checkbox" id="xls-all" onchange="toggleAllClasses(this)"> 전체</label>
@@ -2043,7 +2051,7 @@ function buildReadonly(uid) {
   if (apps.length === 0) return '<div class="no-data">입력한 내용이 없습니다.</div>';
   const header = `<th>#</th>${FIELDS.map(f => `<th>${f.label}</th>`).join('')}`;
   const body = apps.map((a, i) => `<tr><td style="color:#868e96;font-size:12px">${i + 1}</td>${FIELDS.map(f => `<td>${f.type === 'check' ? (a[f.key] ? '✓' : '') : esc(a[f.key] || '')}</td>`).join('')}</tr>`).join('');
-  return `<div style="font-size:12px;color:var(--gray);margin-bottom:6px;">👁 담당 학급이 아니어서 보기 전용입니다.</div>
+  return `<div style="font-size:12px;color:var(--gray);margin-bottom:6px;"><svg class="ic"><use href="#i-eye"/></svg> 담당 학급이 아니어서 보기 전용입니다.</div>
     <div class="table-wrap"><table class="detail-table"><thead><tr>${header}</tr></thead><tbody>${body}</tbody></table></div>`;
 }
 
@@ -2288,7 +2296,7 @@ function renderGold() {
       <td><div class="avatar" style="width:30px;height:30px;font-size:12px">${u.name[0]}</div></td>
       <td style="white-space:nowrap">${esc(u.name)} <span class="class-badge">${badgeLabel(u)}</span></td>
       <td style="color:#adb5bd;font-size:13px;white-space:nowrap">${uid}</td>
-      <td style="text-align:right;white-space:nowrap">🪙 <input type="number" min="0" class="gold-input" value="${getCoin(uid)}" data-uid="${uid}" onchange="setGold(this)"> G</td>
+      <td style="text-align:right;white-space:nowrap"><svg class="ic"><use href="#i-coin"/></svg> <input type="number" min="0" class="gold-input" value="${getCoin(uid)}" data-uid="${uid}" onchange="setGold(this)"> G</td>
       <td style="font-size:12px">${ownedSkinsText(uid)}</td>
       <td style="text-align:right;white-space:nowrap"><button class="btn-pw-reset" onclick="resetSkins('${uid}')">스킨 초기화</button></td>
     </tr>`;
@@ -2613,7 +2621,7 @@ function applySkin(theme) {
   if (!owned.includes(theme)) {
     const meta = SKIN_META[theme];
     const coin = getCoin(uid);
-    if (coin < meta.price) { showSkinMsg(`🪙 돈이 부족합니다.`, true); return; }
+    if (coin < meta.price) { showSkinMsg(`돈이 부족합니다.`, true); return; }
     if (!confirm(`${meta.name} 스킨을 ${meta.price}G로 구입할까요?`)) return;
     setCoin(uid, coin - meta.price);
     owned.push(theme); setOwned(uid, owned);
@@ -2654,7 +2662,7 @@ function updateGameSoundBtn() {
   const b = document.getElementById('game-sound-btn');
   if (!b) return;
   const on = !!(currentUser && STORE['sound_' + currentUser.id]);
-  b.textContent = on ? '🔊 On' : '🔇 Off';
+  b.innerHTML = on ? '<svg class="ic"><use href="#i-volon"/></svg> On' : '<svg class="ic"><use href="#i-voloff"/></svg> Off';
 }
 function toggleGameSound() {
   if (!currentUser) return;
@@ -2847,7 +2855,7 @@ function renderCheerRoll() {
     if (!list.length) { el.style.display = 'none'; el.innerHTML = ''; return; }
     const c = list[Math.floor(Math.random() * list.length)];
     el.style.display = '';
-    el.innerHTML = `💌 ${esc(c.text)} <span class="cheer-name">— ${esc(c.name)}</span>`;
+    el.innerHTML = `<svg class="ic"><use href="#i-heart"/></svg> ${esc(c.text)} <span class="cheer-name">— ${esc(c.name)}</span>`;
   });
 }
 function startCheerRoll() {
