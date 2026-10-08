@@ -727,9 +727,11 @@
 
   /* ── 아이콘 (선+단색 SVG) ── */
   .ic { width: 1.15em; height: 1.15em; vertical-align: -0.2em; fill: none; stroke: currentColor; stroke-width: 1.9; stroke-linecap: round; stroke-linejoin: round; flex-shrink: 0; }
+  .ic { color: var(--primary); }
+  .btn-pw-change:hover .ic, .btn-modal-ok .ic, .btn-excel .ic, .btn-save .ic, .btn-login .ic, .layout-btn.active .ic, .filter-btn.active .ic, .coin-display .ic { color: inherit; }
   .ic-logo { width: 1.15em; height: 1.15em; vertical-align: -0.2em; stroke: none; }
-  .si-search { padding-left: 32px !important; background-repeat: no-repeat !important; background-position: 10px center !important; background-size: 15px !important;
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23868e96' stroke-width='2' stroke-linecap='round'%3E%3Ccircle cx='11' cy='11' r='7'/%3E%3Cpath d='M20 20l-4-4'/%3E%3C/svg%3E") !important; }
+  .si-search { padding-left: 32px !important; background-repeat: no-repeat !important; background-position: 10px center !important; background-size: 17px !important;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%234c6ef5' stroke-width='2.8' stroke-linecap='round'%3E%3Ccircle cx='10.5' cy='10.5' r='6.5'/%3E%3Cpath d='M20 20l-4.8-4.8'/%3E%3C/svg%3E") !important; }
 </style>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="susi_db.js"></script>
