@@ -952,7 +952,7 @@
             <button class="btn-save" onclick="createTeacher()">추가</button>
           </div>
           <div class="pw-msg" id="teacher-msg"></div>
-          <div style="font-size:12px;color:var(--gray);margin-top:4px;">초기 비밀번호는 1234입니다. 부장은 전 학급·졸업생을 수정할 수 있고, 학급 교사는 담당 학급만 수정합니다.</div>
+          <div style="font-size:12px;color:var(--gray);margin-top:4px;">초기 비밀번호가 설정되어 있습니다(최초 로그인 후 꼭 변경해 주세요). 부장은 전 학급·졸업생을 수정할 수 있고, 학급 교사는 담당 학급만 수정합니다.</div>
         </div>
         <div id="teacher-list"></div>
       </div>
@@ -1186,18 +1186,8 @@
 
 <script>
 // ── CLASS DATA ──
-const ALL_CLASSES = {
-  1:  ['강아린','김민지','김민초','김사랑','김성은','김승연','김아영','김영운','김윤아','김태연','김태희','김한나','김현서','류은채','박서연','박지윤','방서진','송지효','유가은','유서연','유채은','이다인','임서희','장성경','장희진','조서연','지민재','최해련','한서윤','함효림'],
-  2:  ['고나은','구민주','김나연','김다연','김려경','김미주','김서윤','김유민','김현희','박소은','박숙희','박시우','우서현','우정연','유채민','이나현','이세령','이소현','이시은','이시현','이윤지','이지은','임세빈','임채아','전은빈','정하영','주시은','주지민'],
-  3:  ['권보민','김도담','김민서','김민정','김사랑','김태희','민채령','박별하','박세연','박소윤','백승아','송하음','안찬서','연나경','연채은','오다윤','유승연','윤서정','이다원','이주아','이효주','임예린','임채원','장서희','장유미','전지민','정미주','정현주','최유진'],
-  4:  ['김남경','김시연','김시우','김예린','김재희','김지오','김지원','박은혜','방서연','봉민영','서지우','신예은','심현지','연지민','예유림','오나영','원이서','장서현','장수민','정다은','정재희','정현지','조하진','조현아','최다연','최유진','최윤서','표정윤','한주연'],
-  5:  ['권수지','김담희','김세연','김시현','김지민','김태연','김햇님','방승윤','손수영','신민주','신혜민','양윤서','유예린','유예진','유환희','윤예슬','이가은','이소진','이연신','이연지','이태은','임승현','장예원','장주아','전소여','조민지','진지인','최승아','최유진'],
-  6:  ['권수현','권예지','김도연','김민채','김시은','김윤아','김채민','김채연','김하은','김혜진','나현서','남다은','남예서','박민영','백민희','성윤아','신서영','염세빈','유하랑','이예림','이예슬','이예은','이유민','이지효','임서현','장민성','정지윤','진효리','한예원'],
-  7:  ['NGUYEN HAN ANH','강보영','김다은','김도연','김민주','노해진','박예현','박진서','박한별','배은빈','신은하','연고은','원소정','원태인','윤솔','이명금','이서현','이연수','이은수','이주아','이채연','이채윤','인시은','조은빈','차송현','하윤지','허유경'],
-  8:  ['강민경','길수아','김민서','김민지','김민채','김지현','나혜진','박경랑','박서현','박시현','박현선','배주현','서주경','손혜주','송은지','신은채','신혜령','연은지','오효림','이나경','이민서','이서영','이지아','이지윤','임다영','임지연','정세윤','조은서','최수아'],
-  9:  ['곽보민','권경현','권시은','김나예','김나은','김민지','김아린','박가은','박수연','박수연','신서연','신여은','신윤정','양선아','유호윤','윤정현','이서윤','이은서','임정현','정수인','정아름','정유민','조하온','최서연','최서윤','최수애','하지수','홍소연'],
-  10: ['강지우','김가인','김단아','김보현','김승연','김호연','박사랑','박세라','박하음','손여진','손예서','신예슬','신지효','양예빈','원지유','윤서현','이사랑','이서윤','이재윤','임서영','임서현','장유림','장주예','조승주','진서윤','최하은','한윤지','한채이']
-};
+function getClasses() { return (STORE.classes && typeof STORE.classes === 'object' && Object.keys(STORE.classes).length) ? STORE.classes : {}; }
+function setClasses(obj) { STORE.classes = obj; saveConfig(); }
 
 // ── 공유 저장소 (문서 분리: accounts/{uid} + shared/config·scores·cheers) ──
 let STORE = {};
@@ -1224,6 +1214,7 @@ function applyConfig(data) {
   data = data || {};
   STORE.teachers  = Array.isArray(data.teachers)  ? data.teachers  : (STORE.teachers  || []);
   STORE.graduates = Array.isArray(data.graduates) ? data.graduates : (STORE.graduates || []);
+  STORE.classes   = (data.classes && typeof data.classes === 'object' && Object.keys(data.classes).length) ? data.classes : (STORE.classes || {});
   STORE.gradSeq   = data.gradSeq || STORE.gradSeq || 0;
   cfgReady = true; fbReady = true;
   rebuildUsers();
@@ -1235,10 +1226,10 @@ function applyConfig(data) {
 }
 function applyAccount(uid, data) {
   if (!data) {
-    ['apps_','pw_','coin_','owned_','skin_','sound_','layout_'].forEach(p => delete STORE[p + uid]);
+    ['apps_','pwset_','coin_','owned_','skin_','sound_','layout_'].forEach(p => delete STORE[p + uid]);
   } else {
     STORE['apps_' + uid]   = Array.isArray(data.apps) ? data.apps : [];
-    if (data.pw != null) STORE['pw_' + uid] = data.pw; else delete STORE['pw_' + uid];
+    STORE['pwset_' + uid]  = !!data.pwHash;
     STORE['coin_' + uid]   = (typeof data.coin === 'number') ? data.coin : 0;
     STORE['owned_' + uid]  = Array.isArray(data.owned) ? data.owned : [];
     STORE['skin_' + uid]   = data.skin || 'light';
@@ -1281,7 +1272,6 @@ function accountCls(uid) {
 function accountPayload(uid) {
   return {
     apps:   Array.isArray(STORE['apps_' + uid]) ? STORE['apps_' + uid] : [],
-    pw:     STORE['pw_' + uid] != null ? STORE['pw_' + uid] : null,
     coin:   typeof STORE['coin_' + uid] === 'number' ? STORE['coin_' + uid] : 0,
     owned:  Array.isArray(STORE['owned_' + uid]) ? STORE['owned_' + uid] : [],
     skin:   STORE['skin_' + uid] || 'light',
@@ -1323,7 +1313,7 @@ function saveAccount(uid) {
 }
 function saveConfig() {
   cacheStoreSoon();
-  if (window.fb) window.fb.saveShared('config', { teachers: getTeachers(), graduates: getGraduates(), gradSeq: STORE.gradSeq || 0 });
+  if (window.fb) window.fb.saveShared('config', { teachers: getTeachers(), graduates: getGraduates(), classes: getClasses(), gradSeq: STORE.gradSeq || 0 });
 }
 function saveScoresDoc() { if (window.fb) window.fb.saveShared('scores', { list: getScores() }); }
 function saveCheerField(uid) {
@@ -1422,7 +1412,7 @@ const USERS = {};
 function rebuildUsers() {
   for (const k in USERS) delete USERS[k];
   USERS.admin = { role: 'admin', name: '관리자' };
-  for (const [cls, names] of Object.entries(ALL_CLASSES)) {
+  for (const [cls, names] of Object.entries(getClasses())) {
     const c = parseInt(cls);
     const prefix = c === 10 ? '310' : `30${c}`;
     names.forEach((name, i) => { USERS[prefix + String(i + 1).padStart(2, '0')] = { role: 'student', name, cls: c }; });
@@ -1494,10 +1484,7 @@ function getApps(uid) {
   return arr;
 }
 function setApps(uid, d) { STORE['apps_' + uid] = d; return saveAccount(uid); }
-function getPw(uid)      { const s = STORE['pw_' + uid]; if (s != null) return s; if (uid === 'admin') return 'admin1234'; if (USERS[uid] && USERS[uid].role === 'teacher') return '1234'; return uid; }
-function setPw(uid, pw)  { STORE['pw_' + uid] = pw; saveAccount(uid); }
-function resetPw(uid)    { delete STORE['pw_' + uid]; saveAccount(uid); }
-function isDefaultPw(uid){ return STORE['pw_' + uid] == null; }
+function isDefaultPw(uid){ return !STORE['pwset_' + uid]; }
 
 // ── LOGIN ──
 async function doLogin() {
@@ -1506,9 +1493,22 @@ async function doLogin() {
   const err = document.getElementById('login-err');
   if (!cfgReady) { err.textContent = '데이터를 불러오는 중입니다. 잠시 후 다시 시도하세요.'; err.dataset.loading = '1'; return; }
   if (!USERS[id]) { err.textContent = '존재하지 않는 아이디입니다.'; return; }
+  if (!window.fb) { err.textContent = '서버에 연결할 수 없습니다. 잠시 후 다시 시도하세요.'; return; }
   err.textContent = '확인 중…';
-  if (window.fb) { const acc = await window.fb.getAccount(id); if (acc) applyAccount(id, acc); }   // 본인 계정(비번 포함) 조회
-  if (pw !== getPw(id)) { err.textContent = '비밀번호가 올바르지 않습니다.'; return; }
+  let result;
+  try {
+    result = await window.fb.login(id, pw);           // 서버(Cloud Functions)에서 비밀번호 확인
+  } catch (e) {
+    err.textContent = (e && e.message) || '로그인에 실패했습니다. 다시 시도해 주세요.';
+    return;
+  }
+  try {
+    await window.fb.signInWithToken(result.token);     // 본인 전용 출입증으로 교체
+  } catch (e) {
+    err.textContent = '로그인 처리 중 오류가 발생했습니다. 다시 시도해 주세요.';
+    return;
+  }
+  const acc = await window.fb.getAccount(id); if (acc) applyAccount(id, acc);
   err.textContent = '';
   try { sessionStorage.setItem('session_uid', id); } catch (e) {}
   enterSession(id);
@@ -1581,6 +1581,7 @@ function applyRolePerms() {
 function doLogout() {
   currentUser = null;
   try { sessionStorage.removeItem('session_uid'); } catch (e) {}
+  if (window.fb && window.fb.logout) window.fb.logout();   // 공용 컴퓨터 보호: 로그인 흔적을 남기지 않음
   stopRoleSync();
   stopCheerRoll();
   adminRows = {};
@@ -1711,16 +1712,27 @@ function openPwModal() {
 
 function closePwModal() { document.getElementById('pw-modal-bg').classList.remove('open'); }
 
-function changePw() {
+async function changePw() {
   const cur  = document.getElementById('pw-current').value;
   const nw   = document.getElementById('pw-new').value;
   const conf = document.getElementById('pw-confirm').value;
   const msg  = document.getElementById('pw-msg');
   msg.className = 'pw-msg';
-  if (cur !== getPw(currentUser.id)) { msg.classList.add('err'); msg.textContent = '현재 비밀번호가 올바르지 않습니다.'; return; }
   if (nw.length < 4)                 { msg.classList.add('err'); msg.textContent = '새 비밀번호는 4자 이상이어야 합니다.'; return; }
   if (nw !== conf)                   { msg.classList.add('err'); msg.textContent = '새 비밀번호가 일치하지 않습니다.'; return; }
-  setPw(currentUser.id, nw);
+  if (!window.fb)                    { msg.classList.add('err'); msg.textContent = '서버에 연결할 수 없습니다. 잠시 후 다시 시도하세요.'; return; }
+  msg.textContent = '확인 중…';
+  try {
+    await window.fb.login(currentUser.id, cur);        // 현재 비밀번호를 서버에서 확인
+  } catch (e) {
+    msg.classList.add('err'); msg.textContent = '현재 비밀번호가 올바르지 않습니다.'; return;
+  }
+  try {
+    await window.fb.changePassword({ newPassword: nw });
+  } catch (e) {
+    msg.classList.add('err'); msg.textContent = (e && e.message) || '비밀번호 변경에 실패했습니다.'; return;
+  }
+  msg.className = 'pw-msg';
   msg.classList.add('ok'); msg.textContent = '✓ 비밀번호가 변경되었습니다.';
   ['pw-current','pw-new','pw-confirm'].forEach(id => document.getElementById(id).value = '');
   setTimeout(() => closePwModal(), 1200);
@@ -1956,7 +1968,7 @@ function deleteGraduate(uid) {
   setGraduates(getGraduates().filter(g => g.id !== uid));
   delete USERS[uid];
   delete adminRows[uid];
-  ['apps_','pw_','coin_','owned_','skin_','sound_','layout_'].forEach(p => delete STORE[p + uid]);
+  ['apps_','pwset_','coin_','owned_','skin_','sound_','layout_'].forEach(p => delete STORE[p + uid]);
   if (window.fb) window.fb.deleteAccount(uid);   // 졸업생 계정 문서 삭제
   renderAdmin();
 }
@@ -1973,7 +1985,7 @@ function editGraduate(uid) {
   setGraduates(grads);
   USERS[nw] = USERS[uid];
   delete USERS[uid];
-  ['apps_', 'pw_', 'coin_', 'owned_', 'skin_', 'sound_', 'layout_'].forEach(pre => {
+  ['apps_', 'pwset_', 'coin_', 'owned_', 'skin_', 'sound_', 'layout_'].forEach(pre => {
     if (STORE[pre + uid] !== undefined) { STORE[pre + nw] = STORE[pre + uid]; delete STORE[pre + uid]; }
   });
   saveAccount(nw);                                // 새 학번 계정 저장
@@ -2168,7 +2180,7 @@ function saveTeacherRow(id) {
   t.goldPerm = goldPerm;
   t.pwPerm = pwPerm;
   if (newId !== id) {
-    ['pw_', 'coin_', 'owned_', 'skin_', 'sound_', 'layout_'].forEach(pre => {
+    ['pwset_', 'coin_', 'owned_', 'skin_', 'sound_', 'layout_'].forEach(pre => {
       if (STORE[pre + id] !== undefined) { STORE[pre + newId] = STORE[pre + id]; delete STORE[pre + id]; }
     });
     t.id = newId;
@@ -2186,7 +2198,7 @@ function deleteTeacher(id) {
   if (!confirm(`${u.name} 선생님 (${id}) 계정을 삭제할까요?`)) return;
   setTeachers(getTeachers().filter(t => t.id !== id));
   delete USERS[id];
-  ['apps_','pw_','coin_','owned_','skin_','sound_','layout_'].forEach(p => delete STORE[p + id]);
+  ['apps_','pwset_','coin_','owned_','skin_','sound_','layout_'].forEach(p => delete STORE[p + id]);
   if (window.fb) window.fb.deleteAccount(id);   // 교사 계정 문서 삭제
   renderTeachers();
 }
@@ -2338,8 +2350,15 @@ function confirmReset(uid, name) {
   document.getElementById('modal-title').textContent = '비밀번호 초기화';
   document.getElementById('modal-msg').textContent   = `${name} (${uid}) ${who}의 비밀번호를 ${initPw}(으)로 초기화할까요?`;
   document.getElementById('modal-bg').style.display  = 'flex';
-  document.getElementById('modal-confirm').onclick = () => {
-    resetPw(uid); closeModal(); refreshAdmin();
+  document.getElementById('modal-confirm').onclick = async () => {
+    if (!window.fb) { alert('서버에 연결할 수 없습니다. 잠시 후 다시 시도하세요.'); return; }
+    try {
+      await window.fb.resetPassword({ targetUid: uid });
+    } catch (e) {
+      alert((e && e.message) || '비밀번호 초기화에 실패했습니다.');
+      return;
+    }
+    closeModal(); refreshAdmin();
     alert(`✓ ${name} ${who}의 비밀번호가 ${initPw}(으)로 초기화되었습니다.`);
   };
 }
@@ -2925,7 +2944,8 @@ document.addEventListener('contextmenu', function (e) { e.preventDefault(); });
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/12.15.0/firebase-app.js";
   import { getFirestore, doc, collection, onSnapshot, setDoc, updateDoc, deleteDoc, getDoc, getDocs, query, where, arrayUnion } from "https://www.gstatic.com/firebasejs/12.15.0/firebase-firestore.js";
-  import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/12.15.0/firebase-auth.js";
+  import { getAuth, onAuthStateChanged, signInAnonymously, signInWithCustomToken, signOut } from "https://www.gstatic.com/firebasejs/12.15.0/firebase-auth.js";
+  import { getFunctions, httpsCallable } from "https://www.gstatic.com/firebasejs/12.15.0/firebase-functions.js";
   const firebaseConfig = {
     apiKey: "AIzaSyCqltNq1nOsTXLzlsXJmyXvAxA2pDDv-y4",
     authDomain: "susi-d9f34.firebaseapp.com",
@@ -2937,6 +2957,7 @@ document.addEventListener('contextmenu', function (e) { e.preventDefault(); });
   const app = initializeApp(firebaseConfig);
   const db = getFirestore(app);
   const auth = getAuth(app);
+  const functions = getFunctions(app, "asia-northeast3");
   const accCol = collection(db, "accounts");
   const accDoc = uid => doc(db, "accounts", String(uid));
   const shDoc  = id  => doc(db, "shared", id);
@@ -2960,10 +2981,26 @@ document.addEventListener('contextmenu', function (e) { e.preventDefault(); });
     subAllAccounts:   cb        => onSnapshot(accCol, s => changeCb(s, cb), e => console.warn('구독 오류', e)),
     subClassAccounts: (cls, cb) => onSnapshot(query(accCol, where('cls', '==', cls)), s => changeCb(s, cb), e => console.warn('구독 오류', e)),
     subShared:        (id, cb)  => onSnapshot(shDoc(id), s => cb(s.exists() ? s.data() : null), e => console.warn('구독 오류', e)),
+    // 로그인/비밀번호 변경은 Cloud Functions가 서버에서 처리(클라이언트는 비밀번호를 직접 비교/저장하지 않음)
+    login:            (id, password) => httpsCallable(functions, 'login')({ id, password }).then(r => r.data),
+    signInWithToken:  token => signInWithCustomToken(auth, token).then(() => {}),
+    changePassword:   data => httpsCallable(functions, 'changePassword')(data).then(r => r.data),
+    resetPassword:    data => httpsCallable(functions, 'resetPassword')(data).then(r => r.data),
+    logout:           () => signOut(auth).then(() => signInAnonymously(auth)).catch(e => console.warn('로그아웃 처리 실패(새로고침 시 자동 복구됨)', e)),
   };
-  signInAnonymously(auth)
-    .then(() => { if (window.fbAuthReady) window.fbAuthReady(); })
-    .catch(err => { console.warn('익명 인증 실패(로컬 캐시 사용)', err); if (window.fbAuthFailed) window.fbAuthFailed(); });
+  let _authInited = false;
+  onAuthStateChanged(auth, user => {
+    if (_authInited) return;      // 최초 1회만: 로그인/로그아웃은 우리가 직접 처리하므로 이후 변화는 무시
+    _authInited = true;
+    if (user) {
+      // 이전 로그인 세션이 그대로 남아있음(새로고침 등) — 익명 인증으로 덮어쓰지 않음
+      if (window.fbAuthReady) window.fbAuthReady();
+    } else {
+      signInAnonymously(auth)
+        .then(() => { if (window.fbAuthReady) window.fbAuthReady(); })
+        .catch(err => { console.warn('익명 인증 실패(로컬 캐시 사용)', err); if (window.fbAuthFailed) window.fbAuthFailed(); });
+    }
+  });
 </script>
 </body>
 </html>
